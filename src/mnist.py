@@ -19,7 +19,6 @@ Information on the MNIST database is found at http://yann.lecun.com/exdb/mnist/
 
 import struct
 import Tkinter
-import time
 
 def load_training_labels(db_location="..\\data\\mnist\\training_labels"):
 	"""
@@ -63,9 +62,9 @@ def load_training_images(db_location="..\\data\\mnist\\training_images"):
 
 		# Read pixels.
 
-		# We will read batches of 10000 images at a time.
+		# We will read batches of images to minimise file operations.
 		total_images_to_read = image_count
-		batch_size = 10000
+		batch_size = 10000 # Totally arbitrary.
 		images = []
 
 		while total_images_to_read > 0:
@@ -89,6 +88,9 @@ def load_training_images(db_location="..\\data\\mnist\\training_images"):
 		return images
 
 def view_image(image, width, height):
+	"""
+	Open a Tkinter window to view an image from the MNIST dataset.
+	"""
 	root = Tkinter.Tk()
 	root.minsize(width, height)
 	root.geometry("{}x{}".format(width*2, height*2))
