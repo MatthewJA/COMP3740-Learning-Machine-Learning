@@ -54,3 +54,7 @@ docs/_build/
 
 # MNIST database
 /data/mnist/*
+
+# Mac stuff
+.DS_Store
+**/.DS_Store

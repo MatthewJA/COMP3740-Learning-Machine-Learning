@@ -20,7 +20,7 @@ Information on the MNIST database is found at http://yann.lecun.com/exdb/mnist/
 import struct
 import Tkinter
 
-def load_training_labels(db_location="..\\data\\mnist\\training_labels"):
+def load_training_labels(db_location="../data/mnist/training_labels"):
 	"""
 	Return a list of labels in database order.
 
@@ -41,7 +41,7 @@ def load_training_labels(db_location="..\\data\\mnist\\training_labels"):
 
 		return labels
 
-def load_training_images(db_location="..\\data\\mnist\\training_images"):
+def load_training_images(db_location="../data/mnist/training_images"):
 	"""
 	Return a list of images in database order.
 
