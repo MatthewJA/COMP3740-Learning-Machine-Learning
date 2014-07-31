@@ -25,7 +25,7 @@ class Classifier(object):
 	classification error (loss).
 	"""
 
-	def __init__(self, input_dimension, output_dimension):
+	def __init__(self, input_dimension, output_dimension, learning_rate=0.01):
 		"""
 		The input dimension is a number representing the dimensions of the input
 		vectors. For example, a 28×28 image would be represented by a
@@ -39,6 +39,7 @@ class Classifier(object):
 
 		self.input_dimension = input_dimension
 		self.output_dimension = output_dimension
+		self.learning_rate = learning_rate
 
 		# Initialise parameters.
 		self.initialise_weight_matrix()
@@ -119,24 +120,56 @@ class Classifier(object):
 			on_unused_input="warn"
 		)()
 
-	def calculate_loss(self, input_minibatch, input_labels):
+	def calculate_wrongness(self, input_minibatch, input_labels):
 		"""
-		Calculate the loss when classifying inputs.
-		Loss is the number of correct labels divided by the input length.
+		Calculate the wrongness when classifying inputs.
 		"""
 
 		predictions = self.make_prediction(input_minibatch, input_labels)
 		total = 0
 		right = 0
-		print "CORRECT\tPREDICTION\tACTUAL"
 		for prediction, label in izip(predictions, input_labels):
 			if prediction == label:
-				print "YES\t{}\t{}".format(prediction, label)
 				right += 1
-			else:
-				print "NO\t{}\t{}".format(prediction, label)
 			total += 1
-		print "Correct {:.02%} of the time".format(right/total)
+
+		return 1-right/total
+
+	def get_negative_log_likelihood(self):
+		return -theano.tensor.mean(
+			theano.tensor.log(
+				self.get_probability_matrix()
+			)[theano.tensor.arange(self.y.shape[0]), self.y]
+		)
+
+	def train_model_once(self, input_minibatch, input_labels):
+		gradient_wrt_W = theano.tensor.grad(cost=self.get_negative_log_likelihood(), wrt=classifier.W)
+		gradient_wrt_b = theano.tensor.grad(cost=self.get_negative_log_likelihood(), wrt=classifier.b)
+		updates = [
+			(self.W, self.W - self.learning_rate * gradient_wrt_W),
+			(self.b, self.b - self.learning_rate * gradient_wrt_b)
+		]
+		return theano.function(
+			inputs=[],
+			outputs=self.get_negative_log_likelihood(),
+			updates=updates,
+			givens={
+				self.x: numpy.array(input_minibatch, dtype=theano.config.floatX),
+				self.y: numpy.array(input_labels, dtype="int32")
+			},
+			on_unused_input="ignore"
+		)()
+
+	def train_model(self, input_batch, input_labels, epochs=3, minibatch_size=600):
+		for i in xrange(epochs):
+			batch_start = 0
+			while batch_start < len(input_batch):
+				print "{}/{}: batch {}/{}".format(i, epochs, batch_start//minibatch_size+1,len(input_batch)//minibatch_size)
+				this_minibatch_size = min(len(input_batch)-batch_start, minibatch_size)
+				minibatch = input_batch[batch_start:batch_start+this_minibatch_size]
+				labelbatch = input_labels[batch_start:batch_start+this_minibatch_size]
+				print "NLL:", self.train_model_once(minibatch, labelbatch)
+				batch_start += minibatch_size
 
 if __name__ == "__main__":
 	print "loading training images"
@@ -145,5 +178,6 @@ if __name__ == "__main__":
 	labels = mnist.load_training_labels()
 	print "instantiating classifier"
 	classifier = Classifier(28*28, 10)
-	print "predicting based on initialisation"
-	classifier.calculate_loss(images, labels)
+	print "training"
+	classifier.train_model(images, labels)
+	print "Wrong {:.02%} of the time".format(classifier.calculate_wrongness(images, labels))
