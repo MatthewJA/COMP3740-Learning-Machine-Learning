@@ -187,5 +187,8 @@ if __name__ == "__main__":
 	print "instantiating classifier"
 	classifier = Classifier(images, labels, 28*28, 10)
 	print "training"
-	classifier.train_model()
+	classifier.train_model(50)
 	print "Wrong {:.02%} of the time".format(classifier.calculate_wrongness(images, labels))
+	import matrix_viewer
+	print classifier.W.get_value()
+	matrix_viewer.view_real_images(classifier.W.get_value())
