@@ -21,7 +21,10 @@ import struct
 import cPickle
 import Tkinter
 
-def load_training_labels(db_location="../data/mnist/training_labels"):
+import numpy
+import theano
+
+def load_training_labels(db_location="../data/mnist/training_labels", format="numpy"):
 	"""
 	Return a list of labels in database order.
 
@@ -40,9 +43,22 @@ def load_training_labels(db_location="../data/mnist/training_labels"):
 			label = struct.unpack(">B", f.read(1))[0]
 			labels.append(label)
 
-		return labels
+		nparray = numpy.array(labels)
 
-def load_training_images(db_location="../data/mnist/training_images"):
+		if format == "numpy":
+			return nparray
+		elif format == "theano":
+			return theano.tensor.cast(
+				theano.shared(
+					numpy.asarray(nparray, dtype=theano.config.floatX),
+					borrow=True
+				),
+				"int32"
+			)
+		else:
+			raise ValueError("Invalid format: {}".format(format))
+
+def load_training_images(db_location="../data/mnist/training_images", format="numpy"):
 	"""
 	Return a list of images in database order.
 
@@ -50,8 +66,9 @@ def load_training_images(db_location="../data/mnist/training_images"):
 	"""
 	# Do we have a pickle?
 	try:
-		with open(db_location + ".pkl", "r") as f:
-			return cPickle.load(f)
+		with open(db_location + ".pkl", "rb") as f:
+			print "loading from pickle"
+			nparray = cPickle.load(f)
 	except IOError:
 		with open(db_location, "rb") as f:
 			# Check magic number.
@@ -91,10 +108,21 @@ def load_training_images(db_location="../data/mnist/training_images"):
 
 			assert len(images) == image_count
 
-			with open(db_location + ".pkl", "w") as g:
-				cPickle.dump(images, g)
+			nparray = numpy.array(images)
 
-			return images
+			with open(db_location + ".pkl", "wb") as g:
+				cPickle.dump(nparray, g, -1)
+
+	if format == "numpy":
+		return nparray
+	elif format == "theano":
+		return theano.shared(
+			numpy.asarray(nparray, dtype=theano.config.floatX),
+			borrow=True
+		)
+	else:
+		raise ValueError("Invalid format: {}".format(format))
+
 
 def view_image(image, width, height):
 	"""
@@ -105,7 +133,13 @@ def view_image(image, width, height):
 	root.geometry("{}x{}".format(width*2, height*2))
 	root.bind("<Button>", lambda e: e.widget.quit())
 	im = Tkinter.PhotoImage(width=width, height=height)
-	im.put(" ".join(("{" + " ".join("#{:02x}{:02x}{:02x}".format(image[i+width*j],image[i+width*j],image[i+width*j]) for i in xrange(width)) + "}") for j in xrange(height)))
+	im.put(
+		" ".join(
+			("{" + " ".join(
+				"#{:02x}{:02x}{:02x}".format(
+					image[i+width*j],image[i+width*j],image[i+width*j]) for i in xrange(width)
+				) + "}"
+			) for j in xrange(height)))
 	w = Tkinter.Label(root, image=im)
 	w.pack(fill="both", expand=True)
 	root.mainloop()

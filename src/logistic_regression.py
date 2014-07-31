@@ -25,7 +25,7 @@ class Classifier(object):
 	classification error (loss).
 	"""
 
-	def __init__(self, input_dimension, output_dimension, learning_rate=0.01):
+	def __init__(self, input_batch, output_batch, input_dimension, output_dimension, learning_rate=0.01):
 		"""
 		The input dimension is a number representing the dimensions of the input
 		vectors. For example, a 28×28 image would be represented by a
@@ -39,12 +39,39 @@ class Classifier(object):
 
 		self.input_dimension = input_dimension
 		self.output_dimension = output_dimension
+		self.input_batch = input_batch
+		self.output_batch = output_batch
 		self.learning_rate = learning_rate
 
 		# Initialise parameters.
 		self.initialise_weight_matrix()
 		self.initialise_bias_vector()
 		self.initialise_symbolic_input()
+		self.initialise_theano_functions()
+
+	def initialise_theano_functions(self):
+		"""
+		Set up Theano symbolic functions and store them in self.
+		"""
+
+		gradient_wrt_W = theano.tensor.grad(cost=self.get_negative_log_likelihood(), wrt=self.W)
+		gradient_wrt_b = theano.tensor.grad(cost=self.get_negative_log_likelihood(), wrt=self.b)
+		updates = [
+			(self.W, self.W - self.learning_rate * gradient_wrt_W),
+			(self.b, self.b - self.learning_rate * gradient_wrt_b)
+		]
+		index = theano.tensor.lscalar()
+		batch_size = theano.tensor.lscalar()
+
+		self.train_model_once = theano.function(
+			inputs=[index, batch_size],
+			outputs=self.get_negative_log_likelihood(),
+			updates=updates,
+			givens={
+				self.x: self.input_batch[index*batch_size:(index+1)*batch_size],
+				self.y: self.output_batch[index*batch_size:(index+1)*batch_size]
+			}
+		)
 
 	def initialise_weight_matrix(self):
 		"""
@@ -114,10 +141,10 @@ class Classifier(object):
 			inputs=[],
 			outputs=self.get_most_likely_label(),
 			givens={
-				self.x: numpy.array(input_minibatch, dtype=theano.config.floatX),
-				self.y: numpy.array(input_labels)
+				self.x: input_minibatch,
+				self.y: input_labels
 			},
-			on_unused_input="warn"
+			on_unused_input="ignore"
 		)()
 
 	def calculate_wrongness(self, input_minibatch, input_labels):
@@ -128,7 +155,7 @@ class Classifier(object):
 		predictions = self.make_prediction(input_minibatch, input_labels)
 		total = 0
 		right = 0
-		for prediction, label in izip(predictions, input_labels):
+		for prediction, label in izip(predictions.tolist(), input_labels.eval().tolist()):
 			if prediction == label:
 				right += 1
 			total += 1
@@ -136,48 +163,29 @@ class Classifier(object):
 		return 1-right/total
 
 	def get_negative_log_likelihood(self):
+		"""
+		Return the symbolic negative log-likelihood.
+		"""
 		return -theano.tensor.mean(
 			theano.tensor.log(
 				self.get_probability_matrix()
 			)[theano.tensor.arange(self.y.shape[0]), self.y]
 		)
 
-	def train_model_once(self, input_minibatch, input_labels):
-		gradient_wrt_W = theano.tensor.grad(cost=self.get_negative_log_likelihood(), wrt=classifier.W)
-		gradient_wrt_b = theano.tensor.grad(cost=self.get_negative_log_likelihood(), wrt=classifier.b)
-		updates = [
-			(self.W, self.W - self.learning_rate * gradient_wrt_W),
-			(self.b, self.b - self.learning_rate * gradient_wrt_b)
-		]
-		return theano.function(
-			inputs=[],
-			outputs=self.get_negative_log_likelihood(),
-			updates=updates,
-			givens={
-				self.x: numpy.array(input_minibatch, dtype=theano.config.floatX),
-				self.y: numpy.array(input_labels, dtype="int32")
-			},
-			on_unused_input="ignore"
-		)()
-
-	def train_model(self, input_batch, input_labels, epochs=3, minibatch_size=600):
-		for i in xrange(epochs):
-			batch_start = 0
-			while batch_start < len(input_batch):
-				print "{}/{}: batch {}/{}".format(i, epochs, batch_start//minibatch_size+1,len(input_batch)//minibatch_size)
-				this_minibatch_size = min(len(input_batch)-batch_start, minibatch_size)
-				minibatch = input_batch[batch_start:batch_start+this_minibatch_size]
-				labelbatch = input_labels[batch_start:batch_start+this_minibatch_size]
-				print "NLL:", self.train_model_once(minibatch, labelbatch)
-				batch_start += minibatch_size
+	def train_model(self, epochs=100, minibatch_size=600):
+		for epoch in xrange(1, epochs+1):
+			batches = self.input_batch.get_value(borrow=True).shape[0]//minibatch_size
+			for index in xrange(batches):
+				self.train_model_once(index, minibatch_size)
+			print "{epoch}/{epochs}: {batch}/{batches}".format(epoch=epoch, epochs=epochs, batch=index+1, batches=batches)
 
 if __name__ == "__main__":
 	print "loading training images"
-	images = mnist.load_training_images()
+	images = mnist.load_training_images(format="theano")
 	print "loading training labels"
-	labels = mnist.load_training_labels()
+	labels = mnist.load_training_labels(format="theano")
 	print "instantiating classifier"
-	classifier = Classifier(28*28, 10)
+	classifier = Classifier(images, labels, 28*28, 10)
 	print "training"
-	classifier.train_model(images, labels)
+	classifier.train_model()
 	print "Wrong {:.02%} of the time".format(classifier.calculate_wrongness(images, labels))
