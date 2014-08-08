@@ -123,6 +123,11 @@ def load_training_images(db_location="../data/mnist/training_images", format="nu
 	else:
 		raise ValueError("Invalid format: {}".format(format))
 
+def load_test_labels(db_location="../data/mnist/test_labels", format="numpy"):
+	return load_training_labels(db_location, format)
+
+def load_test_images(db_location="../data/mnist/test_images", format="numpy"):
+	return load_training_images(db_location, format)
 
 def view_image(image, width, height):
 	"""
