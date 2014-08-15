@@ -172,23 +172,50 @@ class Classifier(object):
 			)[theano.tensor.arange(self.y.shape[0]), self.y]
 		)
 
-	def train_model(self, epochs=100, minibatch_size=600):
+	def train_model(self, epochs=100, minibatch_size=600, test_each_epoch=False, test_set=None):
+		if test_each_epoch:
+			self_accuracies = []
+			test_accuracies = []
+			test_images, test_labels = test_set
+
 		for epoch in xrange(1, epochs+1):
 			batches = self.input_batch.get_value(borrow=True).shape[0]//minibatch_size
 			for index in xrange(batches):
 				self.train_model_once(index, minibatch_size)
-			print "{epoch}/{epochs}: {batch}/{batches}".format(epoch=epoch, epochs=epochs, batch=index+1, batches=batches)
+			print "{epoch}/{epochs}: {batch}/{batches}".format(epoch=epoch,
+																												epochs=epochs,
+																												batch=index+1,
+																												batches=batches)
+			if test_each_epoch:
+				self_accuracies.append(self.calculate_wrongness(self.input_batch, self.output_batch))
+				test_accuracies.append(self.calculate_wrongness(test_images, test_labels))
 
-if __name__ == "__main__":
-	print "loading training images"
-	images = mnist.load_training_images(format="theano")
-	print "loading training labels"
-	labels = mnist.load_training_labels(format="theano")
-	print "instantiating classifier"
-	classifier = Classifier(images, labels, 28*28, 10)
-	print "training"
-	classifier.train_model(50)
-	print "Wrong {:.02%} of the time".format(classifier.calculate_wrongness(images, labels))
-	import matrix_viewer
-	print classifier.W.get_value()
-	matrix_viewer.view_real_images(classifier.W.get_value())
+		if test_each_epoch:
+			return (self_accuracies, test_accuracies)
+
+
+if __name__ == '__main__':
+  print "loading training images"
+  images = mnist.load_training_images(format="theano")
+  print "loading training labels"
+  labels = mnist.load_training_labels(format="theano")
+  print "instantiating classifier"
+  classifier = Classifier(images, labels, 28*28, 10)
+  print "training...",
+  classifier.train_model(100)
+  print "done."
+
+
+  print "loading test images"
+  test_images = mnist.load_test_images(format="theano")
+  print "loading test labels"
+  test_labels = mnist.load_test_labels(format="theano")
+
+  print "Wrong {:.02%} of the time".format(classifier.calculate_wrongness(
+                                test_images, test_labels))
+  print "(On the training set, wrong {:.02%} of the time)".format(
+      classifier.calculate_wrongness(images, labels))
+
+	# import matrix_viewer
+	# print classifier.W.get_value()
+	# matrix_viewer.view_real_images(classifier.W.get_value())
