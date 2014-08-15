@@ -89,6 +89,13 @@ class Hidden_Layer(object):
 
 		self.x = theano.tensor.matrix()
 
+	def get_probability_matrix(self):
+		"""
+		Get symbolic probability matrix.
+		"""
+
+		return self.activation(theano.dot(self.x, self.W) + self.b)
+
 class Hidden_Layer_Perceptron(object):
 	"""
 	Learns to classify and then classifies data.
