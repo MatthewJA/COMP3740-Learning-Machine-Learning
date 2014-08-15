@@ -20,10 +20,13 @@ if __name__ == "__main__":
   self_accuracy, test_accuracy = classifier.train_model(20, 600, True, (test_images, test_labels))
   print " done."
 
-  pylab.plot(self_accuracy, label="accuracy on training data")
-  pylab.plot(test_accuracy, label="accuracy on test data")
+  pylab.plot(self_accuracy, label="%% errors on training data")
+  pylab.plot(test_accuracy, label="%% errors on test data")
   pylab.legend()
   pylab.show()
+
+  pylab.plot(self_accuracy, label="%% errors on training data")
+  pylab.plot(test_accuracy, label="%% errors on test data")
 
   print "Wrong {:.02%} of the time".format(classifier.calculate_wrongness(
                                 test_images, test_labels))
