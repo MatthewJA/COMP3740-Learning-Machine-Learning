@@ -25,7 +25,7 @@ class Classifier(object):
 	classification error (loss).
 	"""
 
-	def __init__(self, input_batch, output_batch, input_dimension, output_dimension, learning_rate=0.01):
+	def __init__(self, input_batch, output_batch, input_dimension, output_dimension, learning_rate=0.01, symbolic_input=False):
 		"""
 		The input dimension is a number representing the dimensions of the input
 		vectors. For example, a 28×28 image would be represented by a
@@ -47,15 +47,17 @@ class Classifier(object):
 		self.initialise_weight_matrix()
 		self.initialise_bias_vector()
 		self.initialise_symbolic_input()
-		self.initialise_theano_functions()
+
+		if not symbolic_input:
+			self.initialise_theano_functions()
 
 	def initialise_theano_functions(self):
 		"""
 		Set up Theano symbolic functions and store them in self.
 		"""
 
-		gradient_wrt_W = theano.tensor.grad(cost=self.get_negative_log_likelihood(), wrt=self.W)
-		gradient_wrt_b = theano.tensor.grad(cost=self.get_negative_log_likelihood(), wrt=self.b)
+		gradient_wrt_W = theano.tensor.grad(cost=self.get_cost(), wrt=self.W)
+		gradient_wrt_b = theano.tensor.grad(cost=self.get_cost(), wrt=self.b)
 		updates = [
 			(self.W, self.W - self.learning_rate * gradient_wrt_W),
 			(self.b, self.b - self.learning_rate * gradient_wrt_b)
@@ -65,7 +67,7 @@ class Classifier(object):
 
 		self.train_model_once = theano.function(
 			inputs=[index, batch_size],
-			outputs=self.get_negative_log_likelihood(),
+			outputs=self.get_cost(),
 			updates=updates,
 			givens={
 				self.x: self.input_batch[index*batch_size:(index+1)*batch_size],
@@ -162,7 +164,7 @@ class Classifier(object):
 
 		return 1-right/total
 
-	def get_negative_log_likelihood(self):
+	def get_cost(self):
 		"""
 		Return the symbolic negative log-likelihood.
 		"""
@@ -182,10 +184,11 @@ class Classifier(object):
 			batches = self.input_batch.get_value(borrow=True).shape[0]//minibatch_size
 			for index in xrange(batches):
 				self.train_model_once(index, minibatch_size)
-			print "{epoch}/{epochs}: {batch}/{batches}".format(epoch=epoch,
-																												epochs=epochs,
-																												batch=index+1,
-																												batches=batches)
+			print "{epoch}/{epochs}: {batch}/{batches}".format(
+				epoch=epoch,
+				epochs=epochs,
+				batch=index+1,
+				batches=batches)
 			if test_each_epoch:
 				self_accuracies.append(self.calculate_wrongness(self.input_batch, self.output_batch))
 				test_accuracies.append(self.calculate_wrongness(test_images, test_labels))
@@ -195,26 +198,26 @@ class Classifier(object):
 
 
 if __name__ == '__main__':
-  print "loading training images"
-  images = mnist.load_training_images(format="theano")
-  print "loading training labels"
-  labels = mnist.load_training_labels(format="theano")
-  print "instantiating classifier"
-  classifier = Classifier(images, labels, 28*28, 10)
-  print "training...",
-  classifier.train_model(100)
-  print "done."
+	print "loading training images"
+	images = mnist.load_training_images(format="theano")
+	print "loading training labels"
+	labels = mnist.load_training_labels(format="theano")
+	print "instantiating classifier"
+	classifier = Classifier(images, labels, 28*28, 10)
+	print "training...",
+	classifier.train_model(100)
+	print "done."
 
 
-  print "loading test images"
-  test_images = mnist.load_test_images(format="theano")
-  print "loading test labels"
-  test_labels = mnist.load_test_labels(format="theano")
+	print "loading test images"
+	test_images = mnist.load_test_images(format="theano")
+	print "loading test labels"
+	test_labels = mnist.load_test_labels(format="theano")
 
-  print "Wrong {:.02%} of the time".format(classifier.calculate_wrongness(
-                                test_images, test_labels))
-  print "(On the training set, wrong {:.02%} of the time)".format(
-      classifier.calculate_wrongness(images, labels))
+	print "Wrong {:.02%} of the time".format(classifier.calculate_wrongness(
+		test_images, test_labels))
+	print "(On the training set, wrong {:.02%} of the time)".format(
+		classifier.calculate_wrongness(images, labels))
 
 	# import matrix_viewer
 	# print classifier.W.get_value()
