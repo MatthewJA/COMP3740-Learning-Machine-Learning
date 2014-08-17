@@ -1,3 +1,5 @@
+# I'm pretty sure this doesn't actually make sense.
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -46,20 +48,14 @@ class RMILogisticClassifier(Classifier):
       )[theano.tensor.arange(self.y.shape[0]), self.y]
     ) * self.modulation
 
-    print supervised_cost.shape
-    unsupervised_cost = - theano.tensor.mean(
-      theano.tensor.log(
-        self.get_probability_matrix()
-      )
-    ) * (1 - self.modulation)
+    print supervised_cost
 
-    # print unsupervised_cost
-    # print type(unsupervised_cost)
-    # print 0.0 * unsupervised_cost
-    # print unsupervised_cost * 0.0
-    # print "diggity"
+    unsupervised_cost =
 
-    return supervised_cost * self.modulation + supervised_cost * (1 - self.modulation)
+    print unsupervised_cost
+
+    return (supervised_cost * self.modulation
+            + unsupervised_cost * (1 - self.modulation))
 
   def initialise_theano_functions(self):
     """
