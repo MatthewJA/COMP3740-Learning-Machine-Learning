@@ -23,8 +23,6 @@ class RMILogisticClassifier(Classifier):
     super(RMILogisticClassifier, self).__init__(input_batch, output_batch, input_dimension,
                                                 output_dimension, learning_rate)
 
-
-
   def initialize_reward_modulation(self):
     """
     Initialise the bias vector and store it in a shared Theano value as self.b.
@@ -49,8 +47,6 @@ class RMILogisticClassifier(Classifier):
     ) * self.modulation
 
     print supervised_cost
-
-    unsupervised_cost =
 
     print unsupervised_cost
 

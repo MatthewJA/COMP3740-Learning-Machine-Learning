@@ -61,7 +61,8 @@ def test_different_observation_distributions():
     environment = ContextualBandit(states)
     length_of_trial = 200
     num_trials = 200
-    rewards = [0] * length_of_trial
+    reward_group_size = 10
+    rewards = [0] * (length_of_trial // reward_group_size)
 
     for trial in range(num_trials):
       agent = ContextualBanditAgent(len(states))
@@ -72,9 +73,10 @@ def test_different_observation_distributions():
         reward = rewardFunction(action)
         agent.learn(observation, action, reward)
 
-        rewards[run] += reward
+        rewards[run // reward_group_size] += reward
 
-    pylab.plot([x/num_trials for x in rewards], label=str(states))
+    pylab.plot([(i*reward_group_size, x/num_trials)
+                            for (i,x) in enumerate(rewards)], label=str(states))
 
   pylab.legend(loc='upper left')
   pylab.show()
@@ -103,4 +105,4 @@ def test_different_k():
   pylab.legend(loc='upper left')
   pylab.show()
 
-test_different_k()
+test_different_observation_distributions()
