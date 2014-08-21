@@ -1,5 +1,3 @@
-# I'm pretty sure this doesn't actually make sense.
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 

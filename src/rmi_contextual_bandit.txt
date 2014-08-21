@@ -11,7 +11,7 @@ def minibatch:
       y = (W^{-1}(Wx+b))-c
 
       actions = y.drop(n)
-      action = argmax(\i -> actions(i))(0...m) # Note that that's
+      action = argmax (\i -> actions(i)) (0...m) # Note that that's
                                                # Q-learning style, I think.
     else
       action = random action
