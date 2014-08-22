@@ -24,7 +24,7 @@ import Tkinter
 import numpy
 import theano
 
-def load_training_labels(db_location="../data/mnist/training_labels", format="numpy"):
+def load_training_labels(db_location="../data/mnist/training_labels", format="numpy", validation=False):
 	"""
 	Return a list of labels in database order.
 
@@ -45,6 +45,11 @@ def load_training_labels(db_location="../data/mnist/training_labels", format="nu
 
 		nparray = numpy.array(labels)
 
+		if validation:
+			nparray = nparray[50000:,]
+		else:
+			nparray = nparray[:50000,]
+
 		if format == "numpy":
 			return nparray
 		elif format == "theano":
@@ -58,11 +63,14 @@ def load_training_labels(db_location="../data/mnist/training_labels", format="nu
 		else:
 			raise ValueError("Invalid format: {}".format(format))
 
-def load_training_images(db_location="../data/mnist/training_images", format="numpy"):
+def load_training_images(db_location="../data/mnist/training_images", format="numpy", validation=False):
 	"""
 	Return a list of images in database order.
 
 	Images are a 784-dimensional tuple of values in [0, 255].
+
+	If validation is False, then the first 50000 images will be loaded.
+	Otherwise, the last 10000 will be loaded.
 	"""
 	# Do we have a pickle?
 	try:
@@ -112,6 +120,11 @@ def load_training_images(db_location="../data/mnist/training_images", format="nu
 
 			with open(db_location + ".pkl", "wb") as g:
 				cPickle.dump(nparray, g, -1)
+
+	if validation:
+		nparray = nparray[50000:,]
+	else:
+		nparray = nparray[:50000,]
 
 	if format == "numpy":
 		return nparray

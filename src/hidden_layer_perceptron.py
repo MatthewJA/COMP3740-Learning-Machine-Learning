@@ -7,256 +7,389 @@ Classify data using a multilayer perceptron with one hidden layer.
 
 from __future__ import division
 
+import time
+
 import theano
 import numpy
 
 import mnist
-import logistic_regression
 
-class Hidden_Layer(object):
+class Layer(object):
 	"""
-	Represents a hidden layer in a multilayer perceptron.
+	Represents an abstract layer with weights and bias.
+	"""
+
+	def __init__(self, *args, **kwargs):
+		raise NotImplementedError("Cannot instantiate abstract layer.")
+
+	def initialise_weight_matrix(self, zeros=True):
+		"""
+		Create a symbolic weight matrix and store it in self.W.
+		"""
+
+		if zeros:
+			matrix = theano.numpy.zeros(
+				(self.input_dimension, self.output_dimension),
+				dtype=theano.config.floatX)
+		else:
+			matrix = numpy.asarray(
+				self.rng.uniform(
+					# This distribution is apparently optimal for tanh.
+					# We also know an optimal distribution for sigmoid.
+					# So we'll pretend that every function is either tanh, or sigmoid.
+					low=-numpy.sqrt(6/(self.input_dimension + self.output_dimension)),
+					high=numpy.sqrt(6/(self.input_dimension + self.output_dimension)),
+					size=(self.input_dimension, self.output_dimension)),
+				dtype=theano.config.floatX)
+
+		self.W = theano.shared(value=matrix, name="W", borrow=True)
+
+	def initialise_bias_vector(self):
+		"""
+		Create a symbolic bias vector and store it in self.b.
+		"""
+
+		vector = numpy.zeros(
+			(self.input_dimension,),
+			dtype=theano.config.floatX)
+
+		self.b = theano.shared(value=vector, name="b", borrow=True)
+
+class Hidden_Layer(Layer):
+	"""
+	A hidden layer in a multilayer perceptron.
 	"""
 
 	def __init__(self
 		, rng
+		, symbolic_input
 		, input_dimension
 		, output_dimension
 		, activation=theano.tensor.tanh):
 		"""
 		rng: NumPy RandomState to initialise weights.
-		input_dimension: Dimension of input vectors.
+		symbolic_input: Symbolic variable for an input minibatch.
+		input_dimension: Dimension of input.
 		output_dimension: Number of hidden nodes.
-		activation: A nonlinear activation function.
+		activation: Nonlinear activation function (default: tanh).
 		"""
 
 		self.rng = rng
+		self.symbolic_input = symbolic_input
 		self.input_dimension = input_dimension
 		self.output_dimension = output_dimension
 		self.activation = activation
 
-		self.initialise_symbolic_input()
-		self.initialise_weight_matrix()
+		self.initialise_weight_matrix(zeros=False)
 		self.initialise_bias_vector()
-
-	def initialise_weight_matrix(self):
-		"""
-		Initialise the weight matrix and store it in a shared Theano value as self.W.
-		"""
-
-		matrix = numpy.asarray(
-			self.rng.uniform(
-				low=-numpy.sqrt(6/(self.input_dimension + self.output_dimension)),
-				high=numpy.sqrt(6/(self.input_dimension + self.output_dimension)),
-				size=(self.input_dimension, self.output_dimension)),
-			dtype=theano.config.floatX)
-
-		if self.activation == theano.tensor.nnet.sigmoid:
-			# Sigmoid functions have a wider range of initial values.
-			# Other functions probably do too but I don't know what those
-			# values ought to be, so let's pretend that every activation
-			# function is actually just tanh and the only one that isn't
-			# is sigmoid.
-			matrix *= 4
-
-		self.W = theano.shared(
-			value=matrix,
-			name="hl_W")
-
-	def initialise_bias_vector(self):
-		"""
-		Initialise the bias vector and store it in a shared Theano value as self.W.
-		"""
-
-		# Initialise a bias vector b.
-		vector = theano.numpy.zeros(
-			(self.output_dimension,),
-			dtype=theano.config.floatX)
-
-		# Store the bias vector.
-		self.b = theano.shared(
-			value=vector,
-			name="hl_b")
-
-	def initialise_symbolic_input(self):
-		"""
-		Initialise the symbolic version of the input.
-		"""
-
-		self.x = theano.tensor.matrix("hl_x")
 
 	def get_output_matrix(self):
 		"""
-		Get symbolic output matrix.
-
-		Similar to the probability matrix in logistic regression.
+		Get a symbolic matrix of outputs.
 		"""
 
-		return self.activation(theano.dot(self.x, self.W) + self.b)
+		return self.activation(
+			theano.tensor.dot(self.symbolic_input, self.W) + self.b)
+
+class Logistic_Regression(Layer):
+	"""
+	Learns to classify and then classifies data by logistic regression.
+	"""
+
+	def __init__(self
+		, symbolic_input
+		, symbolic_output
+		, input_dimension
+		, output_dimension):
+		"""
+		symbolic_input: Symbolic variable for an input minibatch.
+		input_dimension: Dimension of input.
+		output_dimension: Number of output labels.
+		"""
+
+		self.symbolic_input = symbolic_input
+		self.symbolic_output = symbolic_output
+		self.input_dimension = input_dimension
+		self.output_dimension = output_dimension
+
+		self.initialise_weight_matrix()
+		self.initialise_bias_vector()
+
+	def get_probability_matrix(self):
+		"""
+		Get the symbolic probability matrix.
+		"""
+
+		return theano.tensor.nnet.softmax(
+			theano.tensor.dot(self.symbolic_input, self.W) + self.b)
+
+	def get_most_likely_label(self):
+		"""
+		Predict what the most likely label is for each input in the minibatch.
+		"""
+
+		return theano.tensor.argmax(self.get_probability_matrix(), axis=1)
+
+	def get_cost(self):
+		"""
+		Get the symbolic cost.
+		"""
+
+		return -theano.tensor.mean(
+			theano.tensor.log(self.get_probability_matrix())[
+				theano.tensor.arange(self.symbolic_output.shape[0]),
+				self.symbolic_output])
+	
+	def error_rate(self, labels):
+		"""
+		Calculate the error rate.
+
+		labels: A vector of correct labels for each input in the input minibatch.
+		"""
+
+		return theano.tensor.mean(theano.tensor.neq(
+			self.get_most_likely_label(),
+			labels))
 
 class Hidden_Layer_Perceptron(object):
 	"""
-	Learns to classify and then classifies data.
+	Learns to classify and then classifies data using hidden layers and
+	logistic regression.
 	"""
 
 	def __init__(self
 		, input_batch
 		, output_batch
+		, validation_input_batch
+		, validation_output_batch
 		, input_dimension
+		, hidden_dimension
 		, output_dimension
-		, hidden_layer_dimension=500
 		, learning_rate=0.01
+		, patience=10000
+		, patience_boost=2
+		, significance_threshold=0.995
 		, seed=None
-		, regularisation_weights=(0.01, 0.01)):
+		, regularisation_weights=(0.0, 0.0001)):
 		"""
-		input_batch: NumPy array of input vectors.
-		output_batch: NumPy array of output labels.
-		input_dimension: Dimension of input vectors.
-		output_dimension: Number of output labels.
-		hidden_layer_dimension: Dimension of hidden layer.
-		learning_rate: Size of jumps to make while learning.
+		input_batch: Matrix of all input vectors.
+		output_batch: Vector of output labels corresponding to input vectors.
+		validation_input_batch: Matrix of all validation input vectors.
+		validation_output_batch: Vector of output labels corresponding to
+			validation input vectors.
+		input_dimension: Dimension of input.
+		hidden_dimension: Number of hidden nodes.
+		output_dimension: Number of labels in output.
+		learning_rate: Gradient descent learning rate.
+		patience: How long before early termination can potentially occur.
+		patience_boost: How much to boost patience by when a new best is found.
+		significance_threshold: How much improvement is considered significant.
+		seed: Seed for the hidden layer weights.
+		regularisation_weights: Tuple of weights for L1 and L2 regularisation.
 		"""
-
-		self.input_batch = input_batch
-		self.output_batch = output_batch
-		self.input_dimension = input_dimension
-		self.output_dimension = output_dimension
-		self.hidden_layer_dimension = 500
-		self.learning_rate = learning_rate
-		self.regularisation_weights = {
-			"L1": regularisation_weights[0],
-			"L2": regularisation_weights[1]
-		}
 
 		self.rng = numpy.random.RandomState(seed)
+		self.input_batch = input_batch
+		self.output_batch = output_batch
+		self.validation_input_batch = validation_input_batch
+		self.validation_output_batch = validation_output_batch
+		self.input_dimension = input_dimension
+		self.hidden_dimension = hidden_dimension
+		self.output_dimension = output_dimension
+		self.learning_rate = learning_rate
+		self.patience = patience
+		self.patience_boost = patience_boost
+		self.significance_threshold = significance_threshold
+		self.regularisation_weights = regularisation_weights
 
-		self.hidden_layer = Hidden_Layer(self.rng, self.input_dimension,
-			self.hidden_layer_dimension)
-
-		self.logistic_regression_layer = logistic_regression.Classifier(
-			input_batch=self.hidden_layer.get_output_matrix(),
-			output_batch=self.output_batch,
-			input_dimension=self.hidden_layer_dimension,
-			output_dimension=self.output_dimension,
-			learning_rate=self.learning_rate,
-			symbolic_input=True)
-
-		self.initialise_norms()
+		self.initialise_symbolic_input()
+		self.initialise_layers()
+		self.initialise_regularisation()
 		self.initialise_theano_functions()
+
+	def initialise_regularisation(self):
+		"""
+		Setup L1 and L2 regularisation.
+		"""
+
+		self.regularisation = {
+			"L1": abs(self.hidden_layer.W).sum() +
+				abs(self.logistic_regression_layer.W).sum(),
+			"L2": (self.hidden_layer.W ** 2).sum() +
+			(self.logistic_regression_layer.W ** 2).sum()}
+
+		self.regularisation_weights = {
+			"L1": self.regularisation_weights[0],
+			"L2": self.regularisation_weights[1]
+		}
+
+	def initialise_layers(self):
+		"""
+		Setup the hidden and logistic layers.
+		"""
+
+		self.hidden_layer = Hidden_Layer(self.rng
+			, self.symbolic_input
+			, self.input_dimension
+			, self.hidden_dimension)
+
+		self.logistic_regression_layer = Logistic_Regression(
+			self.hidden_layer.get_output_matrix(),
+			self.symbolic_output,
+			self.hidden_dimension,
+			self.output_dimension)
+
+		self.Ws = [self.hidden_layer.W, self.logistic_regression_layer.W]
+		self.bs = [self.hidden_layer.b, self.logistic_regression_layer.b]
+
+	def initialise_symbolic_input(self):
+		"""
+		Setup input minibatch and classification labels in symbolic form.
+		"""
+
+		self.symbolic_input = theano.tensor.matrix("x")
+		self.symbolic_output = theano.tensor.ivector("y")
 
 	def get_cost(self):
 		"""
-		Return the symbolic cost.
+		Get the symbolic cost.
 		"""
 
 		return (self.logistic_regression_layer.get_cost() +
-			self.regularisation_weights["L1"] * self.norms["L1"] +
-			self.regularisation_weights["L2"] * self.norms["L2sq"])
+			self.regularisation_weights["L1"] * self.regularisation["L1"] +
+			self.regularisation_weights["L2"] * self.regularisation["L2"])
 
-	def calculate_wrongness(self):
+	def error_rate(self, labels):
 		"""
-		Calculate the wrongness when classifying inputs.
-		"""
+		Get the error rate of the model.
 
-		return self.logistic_regression_layer.calculate_wrongness()
-
-	def initialise_norms(self):
-		"""
-		Compute and store L1 and L2 norms.
+		labels: A vector of correct labels for each input in the input minibatch.
 		"""
 
-		self.norms = {
-			"L1": abs(self.hidden_layer.W).sum() +
-				abs(self.logistic_regression_layer.W).sum(),
-			"L2sq": (self.hidden_layer.W ** 2).sum() +
-				abs(self.logistic_regression_layer.W ** 2).sum()
-		}
+		return self.logistic_regression_layer.error_rate(labels)
+
+	def calculate_updates(self):
+		"""
+		Find gradients of the model parameters and use them to calculate
+		the updated parameters.
+
+		Return a list of update tuples.
+		"""
+
+		updates = []
+
+		for W in self.Ws:
+			gradient = theano.tensor.grad(self.get_cost(), W)
+			updates.append((W, W - self.learning_rate * gradient))
+
+		for b in self.bs:
+			gradient = theano.tensor.grad(self.get_cost(), b)
+			updates.append((b, b - self.learning_rate * gradient))
+
+		return updates
 
 	def initialise_theano_functions(self):
 		"""
-		Set up Theano symbolic functions and store them in self.
+		Compile Theano functions.
 		"""
 
-		gradient_wrt_hl_W = theano.tensor.grad(
-			cost=self.get_cost(),
-			wrt=self.hidden_layer.W)
-		gradient_wrt_hl_b = theano.tensor.grad(
-			cost=self.get_cost(),
-			wrt=self.hidden_layer.b)
-		gradient_wrt_lrl_W = theano.tensor.grad(
-			cost=self.get_cost(),
-			wrt=self.logistic_regression_layer.b)
-		gradient_wrt_lrl_b = theano.tensor.grad(
-			cost=self.get_cost(),
-			wrt=self.logistic_regression_layer.b)
+		index = theano.tensor.lscalar("i")
+		batch_size = theano.tensor.lscalar("s")
 
-		updates = [
-			(self.hidden_layer.W,
-				self.hidden_layer.W -
-				self.learning_rate * gradient_wrt_hl_W),
-			(self.hidden_layer.b,
-				self.hidden_layer.b -
-				self.learning_rate * gradient_wrt_hl_b),
-			(self.logistic_regression_layer.W,
-				self.logistic_regression_layer.W -
-				self.learning_rate * gradient_wrt_lrl_W),
-			(self.logistic_regression_layer.b,
-				self.logistic_regression_layer.b -
-				self.learning_rate * gradient_wrt_lrl_b)]
+		self.train_model_once = theano.function(inputs=[index, batch_size]
+			, outputs=self.get_cost()
+			, updates=self.calculate_updates()
+			, givens={
+				self.symbolic_input:
+					self.input_batch[index*batch_size:(index+1)*batch_size],
+				self.symbolic_output:
+					self.output_batch[index*batch_size:(index+1)*batch_size]})
 
-		index = theano.tensor.lscalar()
-		batch_size = theano.tensor.lscalar()
+		self.validate_model = theano.function(inputs=[index, batch_size]
+			, outputs=self.error_rate(self.symbolic_output)
+			, givens={
+				self.symbolic_input:
+					self.validation_input_batch[
+						index*batch_size:(index+1)*batch_size],
+				self.symbolic_output:
+					self.validation_output_batch[
+						index*batch_size:(index+1)*batch_size]})
 
-		self.train_model_once = theano.function(
-			inputs=[index, batch_size],
-			outputs=self.get_cost(),
-			updates=updates,
-			givens={
-				self.hidden_layer.x: self.input_batch[index*batch_size:(index+1)*batch_size],
-				self.logistic_regression_layer.y: self.output_batch[index*batch_size:(index+1)*batch_size]
-			}
-		)
+	def train_model(self, epochs=100, minibatch_size=600):
+		"""
+		Train the model against the given data.
+		"""
 
-	def train_model(self, epochs=100, minibatch_size=600, test_each_epoch=False, test_set=None):
-		if test_each_epoch:
-			self_accuracies = []
-			test_accuracies = []
-			test_images, test_labels = test_set
+		input_size = self.input_batch.get_value(borrow=True).shape[0]
+		batch_count = input_size//minibatch_size
+		validation_count = self.validation_input_batch.get_value(
+			borrow=True).shape[0]
+		validation_batch_count = validation_count/minibatch_size
+		validation_frequency = min(batch_count, self.patience/2)
+
+		# Store the best results so far.
+		best_W = None
+		best_b = None
+		best_validation_cost = numpy.inf
+		best_iteration = 0
+
+		# Keep track of how long this takes.
+		start_time = time.time()
 
 		for epoch in xrange(1, epochs+1):
-			batches = self.input_batch.get_value(borrow=True).shape[0]//minibatch_size
-			for index in xrange(batches):
-				self.train_model_once(index, minibatch_size)
-			print "{epoch}/{epochs}: {batch}/{batches}".format(
-				epoch=epoch,
-				epochs=epochs,
-				batch=index+1,
-				batches=batches)
-			if test_each_epoch:
-				self_accuracies.append(self.calculate_wrongness(self.input_batch, self.output_batch))
-				test_accuracies.append(self.calculate_wrongness(test_images, test_labels))
+			for index in xrange(batch_count):
+				cost = self.train_model_once(index, minibatch_size)
+				iteration = (epoch - 1) * batch_count + index
 
-		if test_each_epoch:
-			return (self_accuracies, test_accuracies)
+				if iteration % validation_frequency == 1:
+					validation_cost = numpy.array(
+						self.validate_model(v_index)
+						for v_index in xrange(validation_batch_count)).mean()
+					print("{}{}/{}{}: {:.02f} wrong".format(
+						epoch, index+1, epochs, batch_count,
+						validation_cost))
+
+				# Update best results.
+				if validation_cost < best_validation_cost:
+					# Update patience.
+					if (validation_cost <
+						best_validation_cost * self.significance_threshold):
+						patience = max(patience, iteration * patience_boost)
+						# Note that patience only increases if we have done
+						# enough iterations.
+
+					best_validation_cost = validation_cost
+					best_iteration = iteration
+
+				if patience <= iteration:
+					break
+			else:
+				# If we didn't hit the patience threshold, keep looping.
+				continue
+			break
+
+		total_time = time.time() - start_time
+		time_per_epoch = total_time/epochs
+		print "Average time per epoch: {}s".format(time_per_epoch)
 
 if __name__ == '__main__':
 	print "loading training images"
-	images = mnist.load_training_images(format="theano")
+	images = mnist.load_training_images(format="theano", validation=False)
+	validation_images = mnist.load_training_images(format="theano", validation=True)
 	print "loading training labels"
-	labels = mnist.load_training_labels(format="theano")
+	labels = mnist.load_training_labels(format="theano", validation=False)
+	validation_labels = mnist.load_training_labels(format="theano", validation=True)
 	print "instantiating classifier"
-	classifier = Hidden_Layer_Perceptron(images, labels, 28*28, 10)
+	classifier = Hidden_Layer_Perceptron(images, labels, validation_images,
+		validation_labels, 28*28, 500, 10)
 	print "training...",
 	classifier.train_model(100)
 	print "done."
 
-
-	print "loading test images"
-	test_images = mnist.load_test_images(format="theano")
-	print "loading test labels"
-	test_labels = mnist.load_test_labels(format="theano")
-
-	print "Wrong {:.02%} of the time".format(classifier.calculate_wrongness(
-		test_images, test_labels))
-	print "(On the training set, wrong {:.02%} of the time)".format(
-		classifier.calculate_wrongness(images, labels))
+		# , input_batch
+		# , output_batch
+		# , validation_input_batch
+		# , validation_output_batch
+		# , input_dimension
+		# , hidden_dimension
+		# , output_dimension
