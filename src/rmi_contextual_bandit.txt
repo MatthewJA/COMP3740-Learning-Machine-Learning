@@ -1,0 +1,28 @@
+We get input in R^n, and have to choose an action in the set m.
+
+Our model is W, b and c.
+
+def minibatch:
+  experiences = []
+  100 times do:
+    if random() < epsilon
+      x = Get an observation
+      x += [0] * m
+      y = (W^{-1}(Wx+b))-c
+
+      actions = y.drop(n)
+      action = argmax (\i -> actions(i)) (0...m) # Note that that's
+                                               # Q-learning style, I think.
+    else
+      action = random action
+
+    reward = get_reward
+
+    rewards_vector = [average_observed_reward] * m
+    rewards_vector[action] = reward
+    total_vector = x ++ rewards_vector
+
+    experiences << total_vector
+
+  do_sgd_rbn_style(experiences)
+
