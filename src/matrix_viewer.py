@@ -1,3 +1,7 @@
+from __future__ import division
+
+import numpy
+
 def view_real_images(matrix, width=28, height=28):
     # Name courtesy of PHP
     import pygame
@@ -15,11 +19,13 @@ def view_real_images(matrix, width=28, height=28):
                 pygame.quit()
                 sys.exit()
 
+        m = numpy.amax(matrix[:,ii])
+
         pixelArray = pygame.PixelArray(screen)
         for i in xrange(width*height):
                 x = i % width
                 y = i // width
-                pixel = matrix[y*width + x, ii]
+                pixel = matrix[y*width + x, ii]/m
                 pixelArray[x+50, y+50] = 0x1000000*int(pixel*255) + 0x10000*int(pixel*255) + 0x100*int(pixel*255) + 0xFF
         del pixelArray
 

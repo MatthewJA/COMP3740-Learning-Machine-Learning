@@ -14,6 +14,8 @@ import numpy
 
 import mnist
 
+# theano.config.compute_test_value = 'warn'
+
 class Layer(object):
 	"""
 	Represents an abstract layer with weights and bias.
@@ -50,7 +52,7 @@ class Layer(object):
 		"""
 
 		vector = numpy.zeros(
-			(self.input_dimension,),
+			(self.output_dimension,),
 			dtype=theano.config.floatX)
 
 		self.b = theano.shared(value=vector, name="b", borrow=True)
@@ -139,7 +141,7 @@ class Logistic_Regression(Layer):
 			theano.tensor.log(self.get_probability_matrix())[
 				theano.tensor.arange(self.symbolic_output.shape[0]),
 				self.symbolic_output])
-	
+
 	def error_rate(self, labels):
 		"""
 		Calculate the error rate.
@@ -248,7 +250,13 @@ class Hidden_Layer_Perceptron(object):
 		"""
 
 		self.symbolic_input = theano.tensor.matrix("x")
+		# self.symbolic_input.tag.test_value = theano.numpy.zeros(
+		# 		(600, self.input_dimension),
+		# 		dtype=theano.config.floatX)
 		self.symbolic_output = theano.tensor.ivector("y")
+		# self.symbolic_output.tag.test_value = numpy.zeros(
+		# 	(self.input_dimension,),
+		# 	dtype=theano.config.floatX)
 
 	def get_cost(self):
 		"""
@@ -324,7 +332,7 @@ class Hidden_Layer_Perceptron(object):
 		batch_count = input_size//minibatch_size
 		validation_count = self.validation_input_batch.get_value(
 			borrow=True).shape[0]
-		validation_batch_count = validation_count/minibatch_size
+		validation_batch_count = validation_count//minibatch_size
 		validation_frequency = min(batch_count, self.patience/2)
 
 		# Store the best results so far.
@@ -335,6 +343,7 @@ class Hidden_Layer_Perceptron(object):
 
 		# Keep track of how long this takes.
 		start_time = time.time()
+		last_time = start_time
 
 		for epoch in xrange(1, epochs+1):
 			for index in xrange(batch_count):
@@ -342,26 +351,28 @@ class Hidden_Layer_Perceptron(object):
 				iteration = (epoch - 1) * batch_count + index
 
 				if iteration % validation_frequency == 1:
-					validation_cost = numpy.array(
-						self.validate_model(v_index)
-						for v_index in xrange(validation_batch_count)).mean()
-					print("{}{}/{}{}: {:.02f} wrong".format(
+					validation_cost = numpy.asarray([
+						self.validate_model(v_index, minibatch_size)
+						for v_index in xrange(validation_batch_count)]).mean()
+					now_time = time.time() - last_time
+					last_time = time.time()
+					print("{}{}/{}{}: {:.02%} wrong ({:.02f}s)".format(
 						epoch, index+1, epochs, batch_count,
-						validation_cost))
+						validation_cost, now_time))
 
-				# Update best results.
-				if validation_cost < best_validation_cost:
-					# Update patience.
-					if (validation_cost <
-						best_validation_cost * self.significance_threshold):
-						patience = max(patience, iteration * patience_boost)
-						# Note that patience only increases if we have done
-						# enough iterations.
+					# Update best results.
+					if validation_cost < best_validation_cost:
+						# Update patience.
+						if (validation_cost <
+							best_validation_cost * self.significance_threshold):
+							patience = max(self.patience, iteration * self.patience_boost)
+							# Note that patience only increases if we have done
+							# enough iterations.
 
-					best_validation_cost = validation_cost
-					best_iteration = iteration
+						best_validation_cost = validation_cost
+						best_iteration = iteration
 
-				if patience <= iteration:
+				if self.patience <= iteration:
 					break
 			else:
 				# If we didn't hit the patience threshold, keep looping.
@@ -383,13 +394,8 @@ if __name__ == '__main__':
 	classifier = Hidden_Layer_Perceptron(images, labels, validation_images,
 		validation_labels, 28*28, 500, 10)
 	print "training...",
-	classifier.train_model(100)
+	classifier.train_model(20)
 	print "done."
 
-		# , input_batch
-		# , output_batch
-		# , validation_input_batch
-		# , validation_output_batch
-		# , input_dimension
-		# , hidden_dimension
-		# , output_dimension
+	import matrix_viewer
+	matrix_viewer.view_real_images(classifier.hidden_layer.W.get_value())
