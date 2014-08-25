@@ -9,7 +9,8 @@ from __future__ import division
 
 from random import randrange
 
-import pyglet
+import pygame
+import pygame.locals
 
 def plot_over_iterators(iterators, labels=()):
 	"""
@@ -20,39 +21,34 @@ def plot_over_iterators(iterators, labels=()):
 
 	width = height = 500
 
-	window = pyglet.window.Window(width, height)
+	pygame.init()
+	screen = pygame.display.set_mode((width, height))
+	font = pygame.font.SysFont("sans-serif", 30)
 
 	points = [[] for i in xrange(len(iterators))]
 	colours = [(randrange(256), randrange(256), randrange(256))
 		for i in xrange(len(iterators))]
-	labels = [
-		pyglet.text.Label(label,
-                          font_name='Arial',
-                          font_size=20,
-                          x=10, y=height-10-i*30,
-                          anchor_x="left", anchor_y="top",
-                          color=colours[i]+(255,))
+	labels = [font.render(label, 1, colours[i])
 		for i, label in enumerate(labels)]
 
-	@window.event
 	def on_draw():
-		window.clear()
-
-		for label in labels:
-			label.draw()
+		screen.fill(0x000000)
 
 		for ii, iterator in enumerate(points):
 			if len(iterator) > 1:
 				f = lambda x: int(width/len(iterator)*x)
 				g = int
-				scaled = [(f(i), g(val*height))
-					for i, val in enumerate(iterator)]
-				scaled = [s for p in scaled for s in p]
-				pyglet.graphics.draw(len(iterator), pyglet.gl.GL_LINE_STRIP,
-					("v2i", scaled),
-					("c3B", colours[ii]*len(iterator)))
+				for i in xrange(len(iterator)-1):
+					pygame.draw.line(screen, colours[ii],
+						(f(i), g(iterator[i]*height)),
+						(f(i+1), g(iterator[i+1]*height)))
+				z = font.render("{:.02%}".format(iterator[-1]), 1, colours[ii])
+				screen.blit(z, (width//2, height-30-40*ii))
+			screen.blit(labels[ii], (10, height-30-40*ii))
 
-	def update(dt):
+		pygame.display.flip()
+
+	def update():
 		for i in xrange(len(iterators)):
 			try:
 				n = iterators[i].next()
@@ -60,8 +56,12 @@ def plot_over_iterators(iterators, labels=()):
 			except StopIteration:
 				pass
 
-	pyglet.clock.schedule(update)
-	pyglet.app.run()
+	while True:
+		for e in pygame.event.get():
+			if e.type == pygame.locals.QUIT:
+				pygame.quit()
+		update()
+		on_draw()
 
 def plot_over_iterator(iterator):
 	"""
