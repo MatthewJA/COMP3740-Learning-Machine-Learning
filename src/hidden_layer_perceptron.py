@@ -323,7 +323,7 @@ class Hidden_Layer_Perceptron(object):
 					self.validation_output_batch[
 						index*batch_size:(index+1)*batch_size]})
 
-	def train_model(self, epochs=100, minibatch_size=600):
+	def train_model(self, epochs=100, minibatch_size=600, yield_every_iteration=False):
 		"""
 		Train the model against the given data.
 		"""
@@ -349,6 +349,8 @@ class Hidden_Layer_Perceptron(object):
 			for index in xrange(batch_count):
 				cost = self.train_model_once(index, minibatch_size)
 				iteration = (epoch - 1) * batch_count + index
+				if yield_every_iteration:
+					yield (iteration, cost)
 
 				if iteration % validation_frequency == 1:
 					validation_cost = numpy.asarray([
@@ -356,9 +358,8 @@ class Hidden_Layer_Perceptron(object):
 						for v_index in xrange(validation_batch_count)]).mean()
 					now_time = time.time() - last_time
 					last_time = time.time()
-					print("{}{}/{}{}: {:.02%} wrong ({:.02f}s)".format(
-						epoch, index+1, epochs, batch_count,
-						validation_cost, now_time))
+					if not yield_every_iteration:
+						yield (epoch, validation_cost, now_time)
 
 					# Update best results.
 					if validation_cost < best_validation_cost:
@@ -382,6 +383,7 @@ class Hidden_Layer_Perceptron(object):
 		total_time = time.time() - start_time
 		time_per_epoch = total_time/epochs
 		print "Average time per epoch: {}s".format(time_per_epoch)
+		raise StopIteration("No more epochs.")
 
 if __name__ == '__main__':
 	print "loading training images"
@@ -390,11 +392,18 @@ if __name__ == '__main__':
 	print "loading training labels"
 	labels = mnist.load_training_labels(format="theano", validation=False)
 	validation_labels = mnist.load_training_labels(format="theano", validation=True)
-	print "instantiating classifier"
+	print "instantiating classifiers"
 	classifier = Hidden_Layer_Perceptron(images, labels, validation_images,
 		validation_labels, 28*28, 500, 10)
-	print "training...",
-	classifier.train_model(20)
+	classifier2 = Hidden_Layer_Perceptron(images, labels, validation_images,
+		validation_labels, 28*28, 500, 10, learning_rate=0.1)
+	print "training..."
+
+	import plot
+	plot.plot_over_iterators([(i[1]/5 for i in classifier.train_model(100, 600, True)),
+		(i[1]/5 for i in classifier2.train_model(100, 600, True))],
+		("0.01", "0.1"))
+
 	print "done."
 
 	import matrix_viewer
