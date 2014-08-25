@@ -15,14 +15,22 @@ def minibatch:
                                                # Q-learning style, I think.
     else
       action = random action
+    end
 
-    reward = get_reward
+    reward = get_reward(x, action)
 
     rewards_vector = [average_observed_reward] * m
     rewards_vector[action] = reward
     total_vector = x ++ rewards_vector
 
     experiences << total_vector
+  end
 
   do_sgd_rbn_style(experiences)
+end
 
+/*
+
+After acting, we have a cost function which is something like abs(reward you expected from action you took, reward you got), which has no weight on rewards which you didn't interact with because you didn't take that action.
+
+*/
