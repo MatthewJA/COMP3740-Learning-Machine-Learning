@@ -3,6 +3,10 @@ import random
 
 # Chinese Whispers
 
+"""
+Principal Author: Buck Shlegeris
+"""
+
 class MultiBanditAgent(object):
   def __init__(self, n_observations, n_outputs, learning_rate = 0.8, epsilon = 0.1):
     self.n_outputs = n_outputs

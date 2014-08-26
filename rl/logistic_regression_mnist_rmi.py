@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+An implementation of RMI with logistic regression.
+
+Principal Author: Buck Shlegeris
+"""
+
 from __future__ import division
 
 from itertools import izip
@@ -8,7 +14,7 @@ from itertools import izip
 import theano
 import numpy
 
-import mnist
+import lib.mnist as mnist
 from logistic_regression import Classifier
 
 class RMILogisticClassifier(Classifier):

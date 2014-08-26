@@ -3,6 +3,8 @@
 
 """
 Classify data using a multilayer perceptron with one hidden layer.
+
+Principal Author: Matthew Alger
 """
 
 from __future__ import division
@@ -12,7 +14,7 @@ import time
 import theano
 import numpy
 
-import mnist
+import lib.mnist as mnist
 
 # theano.config.compute_test_value = 'warn'
 
@@ -399,12 +401,9 @@ if __name__ == '__main__':
 		validation_labels, 28*28, 500, 10, learning_rate=0.1)
 	print "training..."
 
-	import plot
-	plot.plot_over_iterators([(i[1]/5 for i in classifier.train_model(100, 600, True)),
-		(i[1]/5 for i in classifier2.train_model(100, 600, True))],
+	import lib.plot as plot
+	plot.plot_over_iterators([(i[1] for i in classifier.train_model(100, 600, False)),
+		(i[1] for i in classifier2.train_model(100, 600, False))],
 		("0.01", "0.1"))
 
 	print "done."
-
-	import matrix_viewer
-	matrix_viewer.view_real_images(classifier.hidden_layer.W.get_value())

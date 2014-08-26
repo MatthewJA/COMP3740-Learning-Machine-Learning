@@ -4,6 +4,8 @@
 """Contextual bandit agent using k-nearest-neighbours.
 
 The problem is easier when you have more easily distinguishable observations.
+
+Principal Author: Buck Shlegeris
 """
 
 from __future__ import division

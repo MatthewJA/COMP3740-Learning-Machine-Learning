@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf8 -*-
 
 from __future__ import division
 
@@ -9,6 +10,12 @@ import sys
 import time
 import numpy as np
 import Tkinter
+
+"""
+Classify data by comparing an input to an average vector for each label.
+
+Principal Author: Buck Shlegeris
+"""
 
 
 def load_data(dataset):

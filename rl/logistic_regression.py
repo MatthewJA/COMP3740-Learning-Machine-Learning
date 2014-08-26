@@ -3,6 +3,8 @@
 
 """
 Classify data using logistic regression.
+
+Principal Author: Matthew Alger
 """
 
 from __future__ import division
@@ -12,7 +14,7 @@ from itertools import izip
 import theano
 import numpy
 
-import mnist
+import lib.mnist as mnist
 
 class Classifier(object):
 	"""
@@ -218,7 +220,3 @@ if __name__ == '__main__':
 		test_images, test_labels))
 	print "(On the training set, wrong {:.02%} of the time)".format(
 		classifier.calculate_wrongness(images, labels))
-
-	# import matrix_viewer
-	# print classifier.W.get_value()
-	# matrix_viewer.view_real_images(classifier.W.get_value())
