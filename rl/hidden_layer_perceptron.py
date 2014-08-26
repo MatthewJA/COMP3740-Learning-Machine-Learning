@@ -14,8 +14,6 @@ import time
 import theano
 import numpy
 
-import lib.mnist as mnist
-
 # theano.config.compute_test_value = 'warn'
 
 class Layer(object):
@@ -362,6 +360,8 @@ class Hidden_Layer_Perceptron(object):
 					last_time = time.time()
 					if not yield_every_iteration:
 						yield (epoch, validation_cost, now_time)
+					else:
+						print "{}: {:.02%}".format(epoch, validation_cost)
 
 					# Update best results.
 					if validation_cost < best_validation_cost:
@@ -388,6 +388,8 @@ class Hidden_Layer_Perceptron(object):
 		raise StopIteration("No more epochs.")
 
 if __name__ == '__main__':
+	import lib.mnist as mnist
+
 	print "loading training images"
 	images = mnist.load_training_images(format="theano", validation=False)
 	validation_images = mnist.load_training_images(format="theano", validation=True)
