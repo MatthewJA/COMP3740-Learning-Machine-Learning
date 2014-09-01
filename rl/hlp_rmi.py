@@ -25,16 +25,6 @@ class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 		self.modulation = 0.5
 		super(RMI_Perceptron, self).__init__(*args, **kwargs)
 
-	def get_unsupervised_cost(self):
-		"""
-		"""
-
-		return 1
-
-	def get_supervised_cost(self):
-		"""
-		"""
-
 		return self.logistic_regression_layer.get_cost()
 
 	def get_cost(self):
