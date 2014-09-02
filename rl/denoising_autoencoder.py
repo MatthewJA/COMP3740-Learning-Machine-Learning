@@ -11,8 +11,9 @@ from __future__ import division
 
 import time
 
-import theano
 import numpy
+import theano
+from theano.tensor.shared_randomstreams import RandomStreams
 
 class Denoising_Autoencoder(object):
 	"""
@@ -20,24 +21,64 @@ class Denoising_Autoencoder(object):
 	of the input like back to the original versions of the input. -- Buck
 	"""
 
-	def __init__(self, input_dimension, hidden_dimension, symbolic_input=None, rng=None, learning_rate=0.01):
+	def __init__(self
+		, input_dimension
+		, hidden_dimension
+		, input_batch=None
+		, symbolic_input=None
+		, rng=None
+		, theano_rng=None
+		, learning_rate=0.01
+		, corruption=0.5):
 		"""
 		input_dimension: The dimension of the input vectors.
 		hidden_dimension: How many hidden nodes to map to.
+		input_batch: Optional. 
 		symbolic_input: Optional. A symbolic input value.
 		rng: Optional. A NumPy RandomState.
+		theano_rng: Optional. A Theano RandomStream.
+		learning_rate: Optional. How large gradient descent jumps are.
+		corruption: Optional. How much to corrupt the input when learning.
 		"""
+
+		self.input_dimension = input_dimension
+		self.hidden_dimension = hidden_dimension
 
 		if symbolic_input is None:
 			self.initialise_symbolic_input()
+		else:
+			self.symbolic_input = symbolic_input
 
 		if rng is None:
 			self.initialise_rng()
+		else:
+			self.rng = rng
 
+		if theano_rng is None:
+			self.initialise_theano_rng()
+		else:
+			self.theano_rng = theano_rng
+
+		self.corruption = corruption
+		self.input_batch = input_batch
 		self.activation = theano.tensor.tanh
 		self.learning_rate = learning_rate
+		self.initialise_corrupted_input()
 		self.initialise_parameters()
 		self.initialise_theano_functions()
+
+	def initialise_corrupted_input(self):
+		self.symbolic_corrupted_input = self.theano_rng.binomial(
+				size=self.symbolic_input.shape,
+				n=1,
+				p=1 - self.corruption) * self.symbolic_input
+
+	def initialise_theano_rng(self):
+		"""
+		Initialise and store a Theano RandomStream.
+		"""
+
+		self.theano_rng = RandomStreams(self.rng.randint(2**30))
 
 	def initialise_parameters(self):
 		"""
@@ -63,7 +104,6 @@ class Denoising_Autoencoder(object):
 			name="W",
 			borrow=True)
 
-
 		self.bias = theano.shared(
 			value=numpy.zeros((self.hidden_dimension,),
 				dtype=theano.config.floatX),
@@ -84,7 +124,7 @@ class Denoising_Autoencoder(object):
 		Initialises and subsequently stores a NumPy RandomState.
 		"""
 
-		self.rng = numpy.random.RandomState(seed)
+		self.rng = numpy.random.RandomState()
 
 	def initialise_symbolic_input(self):
 		"""
@@ -99,7 +139,7 @@ class Denoising_Autoencoder(object):
 		"""
 
 		return self.activation(
-			theano.tensor.dot(self.symbolic_input, self.weights) +
+			theano.tensor.dot(self.symbolic_corrupted_input, self.weights) +
 			self.bias)
 
 	def get_reconstructed_input(self):
@@ -116,10 +156,13 @@ class Denoising_Autoencoder(object):
 		Get the symbolic cost.
 		"""
 
-		negative_log_loss = -theano.tensor.sum(self.symbolic_input *
-			theano.tensor.log(self.get_reconstructed_input()) +
-			(1 - self.symbolic_input) *
-			theano.tensor.log(1 - self.get_reconstructed_input()),
+		x = self.symbolic_input
+		y = self.get_reconstructed_input()
+
+		# negative_log_loss = -theano.tensor.sum(x*theano.tensor.log(y) +
+		# 	(1-x)*theano.tensor.log(1-y),
+		# 	axis=1)
+		negative_log_loss = -theano.tensor.sum(y,
 			axis=1)
 
 		mean_loss = theano.tensor.mean(negative_log_loss)
@@ -150,6 +193,59 @@ class Denoising_Autoencoder(object):
 		Compile Theano functions for symbolic variables.
 		"""
 
-		self.train_model_once = theano.function([self.symbolic_input],
-			outputs=self.get_cost(),
-			updates=self.get_updates())
+		index = theano.tensor.lscalar("i")
+		batch_size = theano.tensor.lscalar("b")
+
+		if self.input_batch is not None:
+			self.train_model_once = theano.function([index, batch_size],
+				outputs=self.get_cost(),
+				updates=self.get_updates(),
+				givens={
+					self.symbolic_input: self.input_batch[index*batch_size:
+						(index+1)*batch_size]
+				})
+
+	def train_model(self
+		, epochs=100
+		, minibatch_size=600
+		, yield_every_iteration=False):
+		"""
+		Train the model against the given data.
+
+		epochs: How long to train for.
+		minibatch_size: How large each minibatch is.
+		yield_every_iteration: When to yield.
+		"""
+
+		if self.input_batch is None:
+			raise ValueError("Denoising autoencoder must be initialised with "
+				"input data to train model independently.")
+
+		batch_count = self.input_batch.get_value(
+			borrow=True).shape[0]//minibatch_size
+
+		for epoch in xrange(epochs):
+			costs = []
+			for index in xrange(batch_count):
+				cost = self.train_model_once(index, minibatch_size)
+				costs.append(cost)
+				if yield_every_iteration:
+					yield (index, cost)
+
+			if not yield_every_iteration:
+				yield (epoch, numpy.mean(costs))
+
+if __name__ == '__main__':
+	import lib.mnist as mnist
+
+	print "loading training images"
+	images = mnist.load_training_images(format="theano", validation=False)
+	print "instantiating denoising autoencoder"
+	da = Denoising_Autoencoder(784, 500, images)
+	print "training..."
+
+	import lib.plot as plot
+	plot.plot_over_iterators([(i[1] for i in da.train_model(
+		yield_every_iteration=True))], ("dA",))
+
+	print "done."
