@@ -61,7 +61,7 @@ class Denoising_Autoencoder(object):
 
 		self.corruption = corruption
 		self.input_batch = input_batch
-		self.activation = theano.tensor.tanh
+		self.activation = theano.tensor.nnet.sigmoid
 		self.learning_rate = learning_rate
 		self.initialise_corrupted_input()
 		self.initialise_parameters()
@@ -71,7 +71,8 @@ class Denoising_Autoencoder(object):
 		self.symbolic_corrupted_input = self.theano_rng.binomial(
 				size=self.symbolic_input.shape,
 				n=1,
-				p=1 - self.corruption) * self.symbolic_input
+				p=1 - self.corruption,
+				dtype=theano.config.floatX) * self.symbolic_input
 
 	def initialise_theano_rng(self):
 		"""
@@ -131,7 +132,7 @@ class Denoising_Autoencoder(object):
 		Initialises and subsequently stores a symbolic input value.
 		"""
 
-		self.symbolic_input = theano.tensor.matrix("x")
+		self.symbolic_input = theano.tensor.dmatrix("x")
 
 	def get_hidden_output(self):
 		"""
@@ -159,11 +160,9 @@ class Denoising_Autoencoder(object):
 		x = self.symbolic_input
 		y = self.get_reconstructed_input()
 
-		# negative_log_loss = -theano.tensor.sum(x*theano.tensor.log(y) +
-		# 	(1-x)*theano.tensor.log(1-y),
-		# 	axis=1)
-		negative_log_loss = -theano.tensor.sum(y,
-			axis=1)
+		negative_log_loss = -theano.tensor.sum(x*theano.tensor.log(y) +
+			(1-x)*theano.tensor.log(1-y), axis=1)
+		# negative_log_loss = -theano.tensor.sum(x*theano.tensor.log(y) + (1-x)*theano.tensor.log(1-y), axis=1)
 
 		mean_loss = theano.tensor.mean(negative_log_loss)
 
@@ -205,6 +204,13 @@ class Denoising_Autoencoder(object):
 						(index+1)*batch_size]
 				})
 
+	def get_weight_matrix(self):
+		"""
+		Get the weight matrix.
+		"""
+
+		return theano.function([], self.weights)()
+
 	def train_model(self
 		, epochs=100
 		, minibatch_size=600
@@ -239,13 +245,18 @@ if __name__ == '__main__':
 	import lib.mnist as mnist
 
 	print "loading training images"
-	images = mnist.load_training_images(format="theano", validation=False)
+	images = mnist.load_training_images(format="theano", validation=False, div=256.0)
 	print "instantiating denoising autoencoder"
 	da = Denoising_Autoencoder(784, 500, images)
 	print "training..."
 
-	import lib.plot as plot
-	plot.plot_over_iterators([(i[1] for i in da.train_model(
-		yield_every_iteration=True))], ("dA",))
+	# import lib.plot as plot
+	# plot.plot_over_iterators([(i[1]/1000.0 for i in da.train_model(
+		# yield_every_iteration=True, epochs=10))], ("dA",))
+	for epoch, cost in da.train_model(10):
+		print epoch, cost
 
 	print "done."
+
+	import lib.matrix_viewer as mv
+	mv.view_real_images(da.get_weight_matrix())
