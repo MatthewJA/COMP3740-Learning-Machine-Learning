@@ -64,8 +64,8 @@ class Classifier(object):
 			(self.W, self.W - self.learning_rate * gradient_wrt_W),
 			(self.b, self.b - self.learning_rate * gradient_wrt_b)
 		]
-		index = theano.tensor.lscalar()
-		batch_size = theano.tensor.lscalar()
+		index = theano.tensor.lscalar("index")
+		batch_size = theano.tensor.lscalar("batch_size")
 
 		self.train_model_once = theano.function(
 			inputs=[index, batch_size],
