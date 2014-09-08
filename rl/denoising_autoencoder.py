@@ -252,8 +252,9 @@ if __name__ == '__main__':
 	corruption = 0.3
 	learning_rate = 0.1
 	epochs = 15
+	hiddens = 500
 
-	da = Denoising_Autoencoder(784, 500, images,
+	da = Denoising_Autoencoder(784, hiddens, images,
 		corruption=corruption,
 		learning_rate=learning_rate)
 	print "training..."
@@ -273,7 +274,7 @@ if __name__ == '__main__':
 	import random
 	image = PIL.Image.fromarray(utils.tile_raster_images(
 		X=da.weights.get_value(borrow=True).T,
-		img_shape=(28, 28), tile_shape=(10, 10),
+		img_shape=(28, 28), tile_shape=(50, 10),
 		tile_spacing=(1, 1)))
-	image.save('../plots/{:010x}_{}_{}_{}.png'.format(
-		random.randrange(16**10), corruption, learning_rate, epochs))
+	image.save('../plots/{:010x}_{}_{}_{}_{}.png'.format(
+		random.randrange(16**10), corruption, learning_rate, epochs, hiddens))
