@@ -90,6 +90,7 @@ class Denoising_Autoencoder(object):
 		low = -numpy.sqrt(6/(self.input_dimension + self.hidden_dimension))
 		high = numpy.sqrt(6/(self.input_dimension + self.hidden_dimension))
 		if self.activation is theano.tensor.nnet.sigmoid:
+			print "using sigmoid..."
 			# We know the optimum distribution for tanh and sigmoid, so we
 			# assume that we're using tanh unless we're using sigmoid.
 			low *= 4
@@ -213,7 +214,7 @@ class Denoising_Autoencoder(object):
 
 	def train_model(self
 		, epochs=100
-		, minibatch_size=600
+		, minibatch_size=20
 		, yield_every_iteration=False):
 		"""
 		Train the model against the given data.
@@ -248,8 +249,9 @@ if __name__ == '__main__':
 	images = mnist.load_training_images(format="theano", validation=False, div=256.0)
 	print "instantiating denoising autoencoder"
 
-	corruption = 0.5
+	corruption = 0.3
 	learning_rate = 0.1
+	epochs = 15
 
 	da = Denoising_Autoencoder(784, 500, images,
 		corruption=corruption,
@@ -259,7 +261,7 @@ if __name__ == '__main__':
 	# import lib.plot as plot
 	# plot.plot_over_iterators([(i[1]/1000.0 for i in da.train_model(
 		# yield_every_iteration=True, epochs=10))], ("dA",))
-	for epoch, cost in da.train_model(15):
+	for epoch, cost in da.train_model(epochs):
 		print epoch, cost
 
 	print "done."
@@ -273,5 +275,5 @@ if __name__ == '__main__':
 		X=da.weights.get_value(borrow=True).T,
 		img_shape=(28, 28), tile_shape=(10, 10),
 		tile_spacing=(1, 1)))
-	image.save('../plots/{:010x}_{}_{}.png'.format(
-		random.randrange(16**10), corruption, learning_rate))
+	image.save('../plots/{:010x}_{}_{}_{}.png'.format(
+		random.randrange(16**10), corruption, learning_rate, epochs))
