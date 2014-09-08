@@ -399,13 +399,10 @@ if __name__ == '__main__':
 	print "instantiating classifiers"
 	classifier = Hidden_Layer_Perceptron(images, labels, validation_images,
 		validation_labels, 28*28, 200, 10)
-	classifier2 = Hidden_Layer_Perceptron(images, labels, validation_images,
-		validation_labels, 28*28, 500, 10)
 	print "training..."
 
 	import lib.plot as plot
-	plot.plot_over_iterators([(i[1] for i in classifier.train_model(100, 600, False)),
-		(i[1] for i in classifier2.train_model(100, 600, False))],
-		("200", "500"))
+	plot.plot_over_iterators([(i[1] for i in classifier.train_model(100, 600, True))],
+		("200",))
 
 	print "done."

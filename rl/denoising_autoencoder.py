@@ -28,8 +28,8 @@ class Denoising_Autoencoder(object):
 		, symbolic_input=None
 		, rng=None
 		, theano_rng=None
-		, learning_rate=0.01
-		, corruption=0.5):
+		, learning_rate=0.1
+		, corruption=0.3):
 		"""
 		input_dimension: The dimension of the input vectors.
 		hidden_dimension: How many hidden nodes to map to.
@@ -209,7 +209,7 @@ class Denoising_Autoencoder(object):
 		Get the weight matrix.
 		"""
 
-		return theano.function([], self.weights)()
+		return self.weights.get_value(borrow=True)
 
 	def train_model(self
 		, epochs=100
@@ -247,16 +247,31 @@ if __name__ == '__main__':
 	print "loading training images"
 	images = mnist.load_training_images(format="theano", validation=False, div=256.0)
 	print "instantiating denoising autoencoder"
-	da = Denoising_Autoencoder(784, 500, images)
+
+	corruption = 0.5
+	learning_rate = 0.1
+
+	da = Denoising_Autoencoder(784, 500, images,
+		corruption=corruption,
+		learning_rate=learning_rate)
 	print "training..."
 
 	# import lib.plot as plot
 	# plot.plot_over_iterators([(i[1]/1000.0 for i in da.train_model(
 		# yield_every_iteration=True, epochs=10))], ("dA",))
-	for epoch, cost in da.train_model(10):
+	for epoch, cost in da.train_model(15):
 		print epoch, cost
 
 	print "done."
 
-	import lib.matrix_viewer as mv
-	mv.view_real_images(da.get_weight_matrix())
+	# import lib.matrix_viewer as mv
+	# mv.view_real_images(da.get_weight_matrix())
+	import PIL
+	import lib.dlt_utils as utils
+	import random
+	image = PIL.Image.fromarray(utils.tile_raster_images(
+		X=da.weights.get_value(borrow=True).T,
+		img_shape=(28, 28), tile_shape=(10, 10),
+		tile_spacing=(1, 1)))
+	image.save('../plots/{:010x}_{}_{}.png'.format(
+		random.randrange(16**10), corruption, learning_rate))
