@@ -26,6 +26,7 @@ class RMI_DA(Denoising_Autoencoder):
 
 		output_batch: A vector of labels corresponding to each input vector.
 		output_dimension: How many labels there are.
+		modulation: Percentage weighting to give labels.
 		"""
 
 		self.output_batch = kwargs.pop("output_batch", None)
@@ -50,7 +51,14 @@ class RMI_DA(Denoising_Autoencoder):
 			theano.tensor.dot(self.get_hidden_output(),
 				self.label_weights) + self.label_bias)
 
-		return theano.tensor.argmax(prob_matrix, axis=1)
+		return prob_matrix
+
+	def make_prediction(self):
+		"""
+		Predict labels of a minibatch.
+		"""
+
+		return theano.tensor.argmax(self.get_predictions(), axis=1)
 
 	def initialise_parameters(self):
 		"""
@@ -62,7 +70,7 @@ class RMI_DA(Denoising_Autoencoder):
 		self.label_weights = theano.shared(
 			value=numpy.zeros((self.hidden_dimension, self.input_dimension),
 				dtype=theano.config.floatX),
-			name="W",
+			name="lW",
 			borrow=True)
 
 		self.label_bias = theano.shared(
@@ -92,8 +100,21 @@ class RMI_DA(Denoising_Autoencoder):
 			theano.tensor.log(labels)[
 				theano.tensor.arange(self.symbolic_output.shape[0]),
 				self.symbolic_output])
+		# negative_log_label_loss = -theano.tensor.sum(self.symbolic_output/self.output_dimension*theano.tensor.log(self.get_predictions()) +
+		# 	(1-self.symbolic_output/self.output_dimension)*theano.tensor.log(1-self.get_predictions())) # this is a hack
+		# label_loss = theano.tensor.mean(negative_log_label_loss)
+		# label_loss = 
 
-		return mean_nll + label_loss * self.modulation
+		return mean_nll * (1 - self.modulation) + label_loss * self.modulation
+
+	def error_rate(self):
+		"""
+		Get the rate of incorrect prediction.
+		"""
+
+		return theano.tensor.mean(theano.tensor.neq(
+			self.make_prediction(),
+			self.symbolic_output))
 
 	def initialise_theano_functions(self):
 		"""
@@ -102,6 +123,8 @@ class RMI_DA(Denoising_Autoencoder):
 
 		index = theano.tensor.lscalar("i")
 		batch_size = theano.tensor.lscalar("b")
+		validation_images = theano.tensor.matrix("vx")
+		validation_labels = theano.tensor.ivector("vy")
 
 		if (self.input_batch is not None and
 			self.output_batch is not None):
@@ -112,8 +135,14 @@ class RMI_DA(Denoising_Autoencoder):
 					self.symbolic_input: self.input_batch[index*batch_size:
 						(index+1)*batch_size],
 					self.symbolic_output: self.output_batch[index*batch_size:
-						(index+1)*batch_size]
-				})
+						(index+1)*batch_size]})
+
+			self.validate_model = theano.function(inputs=[validation_images, validation_labels],
+				outputs=self.error_rate(),
+				givens={
+					self.symbolic_input: validation_images,
+					self.symbolic_output: validation_labels},
+				allow_input_downcast=True)
 
 	def get_updates(self):
 		"""
@@ -146,7 +175,7 @@ class RMI_DA(Denoising_Autoencoder):
 			raise ValueError("RMI denoising autoencoder must be initialised "
 				"with output data to train model independently.")
 
-		super(RMI_DA, self).train_model(*args, **kwargs)
+		return super(RMI_DA, self).train_model(*args, **kwargs)
 
 if __name__ == '__main__':
 	import lib.mnist as mnist
@@ -158,8 +187,8 @@ if __name__ == '__main__':
 
 	corruption = 0.3
 	learning_rate = 0.1
-	epochs = 75
-	hiddens = 200
+	epochs = 15
+	hiddens = 500
 
 	da = RMI_DA(784, hiddens, images,
 		output_batch=labels,
@@ -176,6 +205,11 @@ if __name__ == '__main__':
 
 	print "done."
 
+	print "loading test images"
+	validation_images = mnist.load_training_images(format="numpy", validation=True)
+	validation_labels = mnist.load_training_labels(format="numpy", validation=True)
+	print da.validate_model(validation_images, validation_labels)
+
 	# import lib.matrix_viewer as mv
 	# mv.view_real_images(da.get_weight_matrix())
 	import PIL
@@ -183,7 +217,7 @@ if __name__ == '__main__':
 	import random
 	image = PIL.Image.fromarray(utils.tile_raster_images(
 		X=da.weights.get_value(borrow=True).T,
-		img_shape=(28, 28), tile_shape=(2, 10),
+		img_shape=(28, 28), tile_shape=(hiddens//10, 10),
 		tile_spacing=(1, 1)))
 	image.save('../plots/RMI_DA_{:010x}_{}_{}_{}_{}.png'.format(
 		random.randrange(16**10), corruption, learning_rate, epochs, hiddens))
