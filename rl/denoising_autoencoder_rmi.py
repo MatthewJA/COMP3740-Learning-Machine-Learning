@@ -22,12 +22,15 @@ class RMI_DA(Denoising_Autoencoder):
 
 	def __init__(self, *args, **kwargs):
 		"""
-		Same as Denoising_Autoencoder, but with an additional keyword argument
-		of output_batch, a vector of labels corresponding to each input vector.
+		Same as Denoising_Autoencoder, but with additional keyword arguments:
+
+		output_batch: A vector of labels corresponding to each input vector.
+		output_dimension: How many labels there are.
 		"""
 
 		self.output_batch = kwargs.pop("output_batch", None)
 		self.modulation = kwargs.pop("modulation", 0.5)
+		self.output_dimension = kwargs.pop("output_dimension")
 		super(RMI_DA, self).__init__(*args, **kwargs)
 
 	def initialise_symbolic_input(self):
@@ -56,16 +59,14 @@ class RMI_DA(Denoising_Autoencoder):
 		autoencoder parameters.
 		"""
 
-		output_size = self.input_batch.get_value(
-			borrow=True).shape[0]
 		self.label_weights = theano.shared(
-			value=numpy.zeros((self.hidden_dimension, output_size),
+			value=numpy.zeros((self.hidden_dimension, self.input_dimension),
 				dtype=theano.config.floatX),
 			name="W",
 			borrow=True)
 
 		self.label_bias = theano.shared(
-			value=numpy.zeros((output_size,),
+			value=numpy.zeros((self.input_dimension,),
 				dtype=theano.config.floatX),
 			name="lb",
 			borrow=True)
@@ -163,6 +164,7 @@ if __name__ == '__main__':
 	da = RMI_DA(784, hiddens, images,
 		output_batch=labels,
 		corruption=corruption,
+		output_dimension=10,
 		learning_rate=learning_rate)
 	print "training..."
 
