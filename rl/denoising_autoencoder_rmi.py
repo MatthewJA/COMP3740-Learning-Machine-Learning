@@ -30,7 +30,7 @@ class RMI_DA(Denoising_Autoencoder):
 		"""
 
 		self.output_batch = kwargs.pop("output_batch", None)
-		self.modulation = kwargs.pop("modulation", 0.5)
+		self.modulation = kwargs.pop("modulation", 0.7)
 		self.output_dimension = kwargs.pop("output_dimension")
 		super(RMI_DA, self).__init__(*args, **kwargs)
 
@@ -194,7 +194,8 @@ if __name__ == '__main__':
 		output_batch=labels,
 		corruption=corruption,
 		output_dimension=10,
-		learning_rate=learning_rate)
+		learning_rate=learning_rate,
+		modulation=0)
 	print "training..."
 
 	# import lib.plot as plot
