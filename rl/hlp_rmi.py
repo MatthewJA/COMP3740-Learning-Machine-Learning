@@ -42,7 +42,7 @@ class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 			self.regularisation_weights["L1"] * self.regularisation["L1"] +
 			self.regularisation_weights["L2"] * self.regularisation["L2"])
 
-	# I probably need to change this?
+
 	def initialise_theano_functions(self):
 		"""
 		Compile Theano functions.
@@ -70,14 +70,12 @@ class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 					self.validation_output_batch[
 						index*batch_size:(index+1)*batch_size]})
 
-	def train_model(self, epochs=100, minibatch_size=600, yield_every_iteration=False):
-		"""
-		Train the model against the given data.
-		"""
-
-		a bunch of times:
-			cost = self.train_model_once(thing, label)
-
+	def train_model_once(self, index, minibatch_size):
+		reward_predictions = self.(
+						self.input_batch[epoch * minibatch_size + trial], label)
+		choice = self.make_choice(reward_predictions, epsilon)
+		choices[trial] = choice
+		rewards[trial] = int(self.output[epoch * minibatch_size + trial] == choice)
 
 
 if __name__ == '__main__':
