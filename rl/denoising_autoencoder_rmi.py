@@ -30,7 +30,7 @@ class RMI_DA(Denoising_Autoencoder):
 		"""
 
 		self.output_batch = kwargs.pop("output_batch", None)
-		self.modulation = kwargs.pop("modulation", 0.7)
+		self.modulation = kwargs.pop("modulation", 0.3)
 		self.output_dimension = kwargs.pop("output_dimension")
 		super(RMI_DA, self).__init__(*args, **kwargs)
 
@@ -83,7 +83,7 @@ class RMI_DA(Denoising_Autoencoder):
 
 	def get_cost(self):
 		"""
-		Get the symbolic cost.
+		Get the symbolic cost for the weight matrix and bias vectors.
 		"""
 
 		x = self.symbolic_input
@@ -106,6 +106,18 @@ class RMI_DA(Denoising_Autoencoder):
 		# label_loss = 
 
 		return mean_nll * (1 - self.modulation) + label_loss * self.modulation
+
+	def get_lr_cost(self):
+		"""
+		Get the symbolic cost for the logistic regression matrix and bias vector.
+		"""
+
+		labels = self.get_predictions()
+
+		return -theano.tensor.mean(
+			theano.tensor.log(labels)[
+				theano.tensor.arange(self.symbolic_output.shape[0]),
+				self.symbolic_output])
 
 	def error_rate(self):
 		"""
@@ -153,7 +165,7 @@ class RMI_DA(Denoising_Autoencoder):
 		updates = super(RMI_DA, self).get_updates()
 		print "fetching RMI updates..."
 
-		cost = self.get_cost()
+		cost = self.get_lr_cost()
 		
 		weight_gradient = theano.tensor.grad(cost, self.label_weights)
 		bias_gradient = theano.tensor.grad(cost, self.label_bias)
