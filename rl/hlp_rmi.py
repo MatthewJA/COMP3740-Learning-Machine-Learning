@@ -39,7 +39,8 @@ class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 				theano.tensor.arange(self.symbolic_output.shape[0]),
 				self.get_actions()]
 
-		actual_rewards =
+		actual_rewards = ## [int(x==y) for (x,y) in
+											# zip(self.symbolic_output, self.get_actions())]
 
 		wrongness = -theano.tensor.mean(prediced_rewards - actual_rewards)
 
