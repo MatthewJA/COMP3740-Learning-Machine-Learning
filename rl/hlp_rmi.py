@@ -4,7 +4,7 @@
 """
 Classify data using a multilayer perceptron with one hidden layer and RMI.
 
-Principal Author: Matthew Alger
+Principal Author: Buck Shlegeris
 """
 
 from __future__ import division
@@ -18,7 +18,10 @@ import hidden_layer_perceptron
 
 class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 	"""
-	Implementation of RMI with a hidden layer perceptron.
+	Implementation of RMI with a hidden layer perceptron, to deal with a contextual
+	bandit problem.
+
+	In this situation, the 'probability_matrix' means the matrix of expected rewards.
 	"""
 
 	def __init__(self, *args, **kwargs):
@@ -31,14 +34,16 @@ class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 		"""
 		Get the symbolic cost.
 		"""
-		something = -theano.tensor.mean(
-			theano.tensor.log(self.get_probability_matrix())[
+
+		prediced_rewards = self.get_probability_matrix()[
 				theano.tensor.arange(self.symbolic_output.shape[0]),
-				self.symbolic_output])
+				self.get_actions()]
 
+		actual_rewards =
 
+		wrongness = -theano.tensor.mean(prediced_rewards - actual_rewards)
 
-		return
+		return (wrongness +
 			self.regularisation_weights["L1"] * self.regularisation["L1"] +
 			self.regularisation_weights["L2"] * self.regularisation["L2"])
 
@@ -70,13 +75,15 @@ class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 					self.validation_output_batch[
 						index*batch_size:(index+1)*batch_size]})
 
-	def train_model_once(self, index, minibatch_size):
-		reward_predictions = self.(
-						self.input_batch[epoch * minibatch_size + trial], label)
-		choice = self.make_choice(reward_predictions, epsilon)
-		choices[trial] = choice
-		rewards[trial] = int(self.output[epoch * minibatch_size + trial] == choice)
 
+	def get_actions(self):
+		"""
+		Predict what the most likely label is for each input in the minibatch.
+		"""
+
+		# for the moment, let's forget exploration
+		bests = theano.tensor.argmax(self.get_probability_matrix(), axis=1)
+		return bests
 
 if __name__ == '__main__':
 	import lib.mnist as mnist
