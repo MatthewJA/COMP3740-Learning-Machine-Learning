@@ -105,6 +105,7 @@ class Logistic_Regression(Layer):
 		, output_dimension):
 		"""
 		symbolic_input: Symbolic variable for an input minibatch.
+		??? Is symbolic_output the symbolic variable for an output batch?
 		input_dimension: Dimension of input.
 		output_dimension: Number of output labels.
 		"""
