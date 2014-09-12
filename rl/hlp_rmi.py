@@ -41,11 +41,11 @@ class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 
 		actual_rewards = theano.tensor.eq(self.symbolic_output, self.get_actions())
 
-		wrongness = -theano.tensor.mean(prediced_rewards - actual_rewards)
+		wrongness = theano.tensor.mean(abs(prediced_rewards - actual_rewards))
 
-		return (wrongness +
-			self.regularisation_weights["L1"] * self.regularisation["L1"] +
-			self.regularisation_weights["L2"] * self.regularisation["L2"])
+		return wrongness
+			# self.regularisation_weights["L1"] * self.regularisation["L1"] +
+			# self.regularisation_weights["L2"] * self.regularisation["L2"])
 
 
 	def initialise_theano_functions(self):
