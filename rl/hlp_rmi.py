@@ -35,7 +35,7 @@ class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 		Get the symbolic cost.
 		"""
 
-		prediced_rewards = self.get_probability_matrix()[
+		prediced_rewards = self.logistic_regression_layer.get_probability_matrix()[
 				theano.tensor.arange(self.symbolic_output.shape[0]),
 				self.get_actions()]
 
@@ -82,7 +82,7 @@ class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 		"""
 
 		# for the moment, let's forget exploration
-		bests = theano.tensor.argmax(self.get_probability_matrix(), axis=1)
+		bests = theano.tensor.argmax(self.logistic_regression_layer.get_probability_matrix(), axis=1)
 		return bests
 
 if __name__ == '__main__':
