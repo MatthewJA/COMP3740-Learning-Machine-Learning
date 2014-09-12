@@ -30,7 +30,7 @@ class RMI_DA(Denoising_Autoencoder):
 		"""
 
 		self.output_batch = kwargs.pop("output_batch", None)
-		self.modulation = kwargs.pop("modulation", 0.3)
+		self.modulation = kwargs.pop("modulation", 0)
 		self.output_dimension = kwargs.pop("output_dimension")
 		super(RMI_DA, self).__init__(*args, **kwargs)
 
@@ -89,21 +89,12 @@ class RMI_DA(Denoising_Autoencoder):
 		x = self.symbolic_input
 		y = self.get_reconstructed_input()
 
-		labels = self.get_predictions()
-
 		negative_log_loss = -theano.tensor.sum(x*theano.tensor.log(y) +
 			(1-x)*theano.tensor.log(1-y), axis=1)
 
 		mean_nll = theano.tensor.mean(negative_log_loss)
 
-		label_loss = -theano.tensor.mean(
-			theano.tensor.log(labels)[
-				theano.tensor.arange(self.symbolic_output.shape[0]),
-				self.symbolic_output])
-		# negative_log_label_loss = -theano.tensor.sum(self.symbolic_output/self.output_dimension*theano.tensor.log(self.get_predictions()) +
-		# 	(1-self.symbolic_output/self.output_dimension)*theano.tensor.log(1-self.get_predictions())) # this is a hack
-		# label_loss = theano.tensor.mean(negative_log_label_loss)
-		# label_loss = 
+		label_loss = self.get_lr_cost()
 
 		return mean_nll * (1 - self.modulation) + label_loss * self.modulation
 
@@ -187,7 +178,11 @@ class RMI_DA(Denoising_Autoencoder):
 			raise ValueError("RMI denoising autoencoder must be initialised "
 				"with output data to train model independently.")
 
-		return super(RMI_DA, self).train_model(*args, **kwargs)
+		iterator = super(RMI_DA, self).train_model(*args, **kwargs)
+		for i in iterator:
+			yield i
+			self.modulation = self.modulation + (1-self.modulation)/5
+			print "modulation is now {}".format(self.modulation)
 
 if __name__ == '__main__':
 	import lib.mnist as mnist
