@@ -4,6 +4,8 @@
 """
 Classify data using a multilayer perceptron with one hidden layer and RMI.
 
+The accuracy gets to at least 93 percent after a while
+
 Principal Author: Buck Shlegeris
 """
 
@@ -103,7 +105,6 @@ if __name__ == '__main__':
 	print "training..."
 
 	import lib.plot as plot
-	plot.plot_over_iterators([(i[1] for i in rmi_classifier.train_model(100, 600, True)),
-		(i[1] for i in hlp_classifier.train_model(100, 600, False))], ("rmi", "hlp"))
+	plot.plot_over_iterators([(i[1] for i in rmi_classifier.train_model(100, 600, False))], ("rmi",))
 
 	print "done."
