@@ -59,16 +59,18 @@ def plot_over_iterators(iterators, labels=()):
 				n = iterators[i].next()
 				points[i].append(n)
 			except StopIteration:
-				if not saved:
-					saved = True
-					date = str(time.strftime("%d-%m-%Y--%H:%M:%S"))
-					pygame.image.save(screen, "../plots/" + date + ".png")
+				return False
+		return True
 
 	while True:
 		for e in pygame.event.get():
 			if e.type == pygame.locals.QUIT:
 				pygame.quit()
-		update()
+		success = update()
+		if not success and not saved:
+			saved = True
+			date = str(time.strftime("%d-%m-%Y--%H:%M:%S"))
+			pygame.image.save(screen, "../plots/" + date + ".png")
 		on_draw()
 
 def plot_over_iterator(iterator):
