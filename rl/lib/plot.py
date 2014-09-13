@@ -9,6 +9,7 @@ Principal Author: Matthew Alger
 
 from __future__ import division
 
+import time
 from random import randrange
 
 import pygame
@@ -32,6 +33,8 @@ def plot_over_iterators(iterators, labels=()):
 		for i in xrange(len(iterators))]
 	labels = [font.render(label, 1, colours[i])
 		for i, label in enumerate(labels)]
+	
+	saved = False
 
 	def on_draw():
 		screen.fill(0x000000)
@@ -56,7 +59,10 @@ def plot_over_iterators(iterators, labels=()):
 				n = iterators[i].next()
 				points[i].append(n)
 			except StopIteration:
-				pass
+				if not saved:
+					saved = True
+					date = str(time.strftime("%d-%m-%Y--%H:%M:%S"))
+					pygame.image.save(screen, "../plots/" + date + ".png")
 
 	while True:
 		for e in pygame.event.get():
