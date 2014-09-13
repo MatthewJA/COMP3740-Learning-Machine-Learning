@@ -105,6 +105,6 @@ if __name__ == '__main__':
 	print "training..."
 
 	import lib.plot as plot
-	plot.plot_over_iterators([(i[1] for i in rmi_classifier.train_model(100, 600, False))], ("rmi",))
+	plot.plot_over_iterators([(i[1] for i in rmi_classifier.train_model(1, 600, False))], ("rmi",))
 
 	print "done."
