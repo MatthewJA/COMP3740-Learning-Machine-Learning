@@ -43,9 +43,9 @@ class RMI_Perceptron(hidden_layer_perceptron.Hidden_Layer_Perceptron):
 
 		wrongness = theano.tensor.mean(abs(prediced_rewards - actual_rewards))
 
-		return wrongness
-			# self.regularisation_weights["L1"] * self.regularisation["L1"] +
-			# self.regularisation_weights["L2"] * self.regularisation["L2"])
+		return (wrongness +
+			self.regularisation_weights["L1"] * self.regularisation["L1"] +
+			self.regularisation_weights["L2"] * self.regularisation["L2"])
 
 
 	def initialise_theano_functions(self):
@@ -104,6 +104,6 @@ if __name__ == '__main__':
 
 	import lib.plot as plot
 	plot.plot_over_iterators([(i[1] for i in rmi_classifier.train_model(100, 600, True)),
-		(i[1] for i in hlp_classifier.train_model(100, 600, True))], ("rmi", "hlp"))
+		(i[1] for i in hlp_classifier.train_model(100, 600, False))], ("rmi", "hlp"))
 
 	print "done."
