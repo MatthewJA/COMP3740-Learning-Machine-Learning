@@ -24,7 +24,9 @@ class Denoising_Autoencoder(object):
 	def __init__(self
 		, input_dimension
 		, hidden_dimension
+		, output_dimension
 		, input_batch=None
+		, output_batch=None
 		, symbolic_input=None
 		, rng=None
 		, theano_rng=None
@@ -33,7 +35,9 @@ class Denoising_Autoencoder(object):
 		"""
 		input_dimension: The dimension of the input vectors.
 		hidden_dimension: How many hidden nodes to map to.
-		input_batch: Optional. 
+		input_batch: Optional. Input data.
+		output_batch: Optional. A vector of labels corresponding to each input vector.
+		output_dimension: How many labels there are.
 		symbolic_input: Optional. A symbolic input value.
 		rng: Optional. A NumPy RandomState.
 		theano_rng: Optional. A Theano RandomStream.
@@ -43,11 +47,15 @@ class Denoising_Autoencoder(object):
 
 		self.input_dimension = input_dimension
 		self.hidden_dimension = hidden_dimension
+		self.output_batch = output_batch
+		self.output_dimension = output_dimension
 
 		if symbolic_input is None:
 			self.initialise_symbolic_input()
 		else:
 			self.symbolic_input = symbolic_input
+
+		self.initialise_symbolic_output()
 
 		if rng is None:
 			self.initialise_rng()
@@ -84,13 +92,12 @@ class Denoising_Autoencoder(object):
 	def initialise_parameters(self):
 		"""
 		Initialises and subsequently stores a weight matrix, bias vector,
-		and reverse bias vector.
+		reverse bias vector, label weight matrix, and label bias vector.
 		"""
 
 		low = -numpy.sqrt(6/(self.input_dimension + self.hidden_dimension))
 		high = numpy.sqrt(6/(self.input_dimension + self.hidden_dimension))
 		if self.activation is theano.tensor.nnet.sigmoid:
-			print "using sigmoid..."
 			# We know the optimum distribution for tanh and sigmoid, so we
 			# assume that we're using tanh unless we're using sigmoid.
 			low *= 4
@@ -121,6 +128,18 @@ class Denoising_Autoencoder(object):
 		self.reverse_weights = self.weights.T	# Tied weights, so the reverse weight
 												# matrix is just the transpose.
 
+		self.label_weights = theano.shared(
+			value=numpy.zeros((self.hidden_dimension, self.input_dimension),
+				dtype=theano.config.floatX),
+			name="lW",
+			borrow=True)
+
+		self.label_bias = theano.shared(
+			value=numpy.zeros((self.input_dimension,),
+				dtype=theano.config.floatX),
+			name="lb",
+			borrow=True)
+
 	def initialise_rng(self):
 		"""
 		Initialises and subsequently stores a NumPy RandomState.
@@ -134,6 +153,13 @@ class Denoising_Autoencoder(object):
 		"""
 
 		self.symbolic_input = theano.tensor.dmatrix("x")
+
+	def initialise_symbolic_output(self):
+		"""
+		Initialises and subsequently stores a symbolic output value.
+		"""
+
+		self.symbolic_output = theano.tensor.ivector("y")
 
 	def get_hidden_output(self):
 		"""
@@ -153,9 +179,18 @@ class Denoising_Autoencoder(object):
 			theano.tensor.dot(self.get_hidden_output(), self.reverse_weights) +
 			self.reverse_bias)
 
+	def error_rate(self):
+		"""
+		Get the rate of incorrect prediction.
+		"""
+
+		return theano.tensor.mean(theano.tensor.neq(
+			self.make_prediction(),
+			self.symbolic_output))
+
 	def get_cost(self):
 		"""
-		Get the symbolic cost.
+		Get the symbolic cost for the weight matrix and bias vectors.
 		"""
 
 		x = self.symbolic_input
@@ -163,28 +198,65 @@ class Denoising_Autoencoder(object):
 
 		negative_log_loss = -theano.tensor.sum(x*theano.tensor.log(y) +
 			(1-x)*theano.tensor.log(1-y), axis=1)
-		# negative_log_loss = -theano.tensor.sum(x*theano.tensor.log(y) + (1-x)*theano.tensor.log(1-y), axis=1)
 
 		mean_loss = theano.tensor.mean(negative_log_loss)
 
 		return mean_loss
+
+	def get_lr_cost(self):
+		"""
+		Get the symbolic cost for the logistic regression matrix and bias vector.
+		"""
+
+		labels = self.get_predictions()
+
+		return -theano.tensor.mean(
+			theano.tensor.log(labels)[
+				theano.tensor.arange(self.symbolic_output.shape[0]),
+				self.symbolic_output])
+
+	def make_prediction(self):
+		"""
+		Predict labels of a minibatch.
+		"""
+
+		return theano.tensor.argmax(self.get_predictions(), axis=1)
+
+	def get_predictions(self):
+		"""
+		Get predictions of what input values we read in.
+		"""
+
+		prob_matrix = theano.tensor.nnet.softmax(
+			theano.tensor.dot(self.get_hidden_output(),
+				self.label_weights) + self.label_bias)
+
+		return prob_matrix
 
 	def get_updates(self):
 		"""
 		Get a list of updates to make when the model is trained.
 		"""
 
-		cost = self.get_cost()
+		da_cost = self.get_cost()
 		
-		weight_gradient = theano.tensor.grad(cost, self.weights)
-		bias_gradient = theano.tensor.grad(cost, self.bias)
-		reverse_bias_gradient = theano.tensor.grad(cost, self.reverse_bias)
+		weight_gradient = theano.tensor.grad(da_cost, self.weights)
+		bias_gradient = theano.tensor.grad(da_cost, self.bias)
+		reverse_bias_gradient = theano.tensor.grad(da_cost, self.reverse_bias)
+
+		lr_cost = self.get_lr_cost()
+		lr_weight_gradient = theano.tensor.grad(lr_cost, self.label_weights)
+		lr_bias_gradient = theano.tensor.grad(lr_cost, self.label_bias)
 
 		updates = [
 			(self.weights, self.weights - self.learning_rate*weight_gradient),
 			(self.bias, self.bias - self.learning_rate*bias_gradient),
 			(self.reverse_bias, self.reverse_bias -
-				self.learning_rate*reverse_bias_gradient)]
+				self.learning_rate*reverse_bias_gradient),
+			(self.label_weights, self.label_weights -
+				self.learning_rate*lr_weight_gradient),
+			(self.label_bias, self.label_bias -
+				self.learning_rate*lr_bias_gradient)]
 
 		return updates
 
@@ -195,15 +267,26 @@ class Denoising_Autoencoder(object):
 
 		index = theano.tensor.lscalar("i")
 		batch_size = theano.tensor.lscalar("b")
+		validation_images = theano.tensor.matrix("vx")
+		validation_labels = theano.tensor.ivector("vy")
 
-		if self.input_batch is not None:
+		if (self.input_batch is not None and
+			self.output_batch is not None):
 			self.train_model_once = theano.function([index, batch_size],
 				outputs=self.get_cost(),
 				updates=self.get_updates(),
 				givens={
 					self.symbolic_input: self.input_batch[index*batch_size:
-						(index+1)*batch_size]
-				})
+						(index+1)*batch_size],
+					self.symbolic_output: self.output_batch[index*batch_size:
+						(index+1)*batch_size]})
+
+			self.validate_model = theano.function(inputs=[validation_images, validation_labels],
+				outputs=self.error_rate(),
+				givens={
+					self.symbolic_input: validation_images,
+					self.symbolic_output: validation_labels},
+				allow_input_downcast=True)
 
 	def get_weight_matrix(self):
 		"""
@@ -227,6 +310,9 @@ class Denoising_Autoencoder(object):
 		if self.input_batch is None:
 			raise ValueError("Denoising autoencoder must be initialised with "
 				"input data to train model independently.")
+		if self.output_batch is None:
+			raise ValueError("RMI denoising autoencoder must be initialised "
+				"with output data to train model independently.")
 
 		batch_count = self.input_batch.get_value(
 			borrow=True).shape[0]//minibatch_size
@@ -242,11 +328,15 @@ class Denoising_Autoencoder(object):
 			if not yield_every_iteration:
 				yield (epoch, numpy.mean(costs))
 
-if __name__ == '__main__':
+def test_DA(DA):
 	import lib.mnist as mnist
 
 	print "loading training images"
 	images = mnist.load_training_images(format="theano", validation=False, div=256.0)
+	labels = mnist.load_training_labels(format="theano", validation=False)
+	print "loading test images"
+	validation_images = mnist.load_training_images(format="numpy", validation=True)
+	validation_labels = mnist.load_training_labels(format="numpy", validation=True)
 	print "instantiating denoising autoencoder"
 
 	corruption = 0.3
@@ -254,21 +344,21 @@ if __name__ == '__main__':
 	epochs = 15
 	hiddens = 500
 
-	da = Denoising_Autoencoder(784, hiddens, images,
+	da = DA(784, hiddens,
+		input_batch=images,
+		output_batch=labels,
+		output_dimension=10,
 		corruption=corruption,
 		learning_rate=learning_rate)
 	print "training..."
 
-	# import lib.plot as plot
-	# plot.plot_over_iterators([(i[1]/1000.0 for i in da.train_model(
-		# yield_every_iteration=True, epochs=10))], ("dA",))
 	for epoch, cost in da.train_model(epochs):
 		print epoch, cost
+		print "wrong {:.02%} of the time".format(
+			float(da.validate_model(validation_images, validation_labels)))
 
 	print "done."
 
-	# import lib.matrix_viewer as mv
-	# mv.view_real_images(da.get_weight_matrix())
 	import PIL
 	import lib.dlt_utils as utils
 	import random
@@ -278,3 +368,6 @@ if __name__ == '__main__':
 		tile_spacing=(1, 1)))
 	image.save('../plots/{:010x}_{}_{}_{}_{}.png'.format(
 		random.randrange(16**10), corruption, learning_rate, epochs, hiddens))
+
+if __name__ == '__main__':
+	test_DA(Denoising_Autoencoder)
