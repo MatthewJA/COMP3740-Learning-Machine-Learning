@@ -403,7 +403,7 @@ if __name__ == '__main__':
 	print "training..."
 
 	import lib.plot as plot
-	plot.plot_over_iterators([(i[1] for i in classifier.train_model(5, 600, False))],
+	plot.plot_over_iterators([(i[1] for i in classifier.train_model(100, 600, False))],
 		("200",))
 
 	print "done."
