@@ -36,17 +36,11 @@ class RMI_DA(Denoising_Autoencoder):
 		Get the symbolic cost for the weight matrix and bias vectors.
 		"""
 
-		x = self.symbolic_input
-		y = self.get_reconstructed_input()
-
-		negative_log_loss = -theano.tensor.sum(x*theano.tensor.log(y) +
-			(1-x)*theano.tensor.log(1-y), axis=1)
-
-		mean_nll = theano.tensor.mean(negative_log_loss)
+		da_loss = super(RMI_DA, self).get_cost()
 
 		label_loss = self.get_lr_cost()
 
-		return mean_nll * (1 - self.modulation) + label_loss * self.modulation
+		return da_loss * (1 - self.modulation) + label_loss * self.modulation
 
 	def train_model(self, *args, **kwargs):
 		"""
