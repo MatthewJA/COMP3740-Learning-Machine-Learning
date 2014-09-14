@@ -22,14 +22,17 @@ def plot_over_iterators(iterators, labels=()):
 	iterator: A list of iterators which yield percentages.
 	"""
 
-	width = height = 500
-
 	pygame.init()
-	screen = pygame.display.set_mode((width, height))
+
+	info = pygame.display.Info()
+	width = info.current_w
+	height = info.current_h
+
+	screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
 	font = pygame.font.SysFont("sans-serif", 30)
 
 	points = [[] for i in xrange(len(iterators))]
-	colours = [(randrange(256), randrange(256), randrange(256))
+	colours = [(randrange(128, 256), randrange(128, 256), randrange(128, 256))
 		for i in xrange(len(iterators))]
 	labels = [font.render(label, 1, colours[i])
 		for i, label in enumerate(labels)]
@@ -65,6 +68,8 @@ def plot_over_iterators(iterators, labels=()):
 	while True:
 		for e in pygame.event.get():
 			if e.type == pygame.locals.QUIT:
+				pygame.quit()
+			if e.type == pygame.locals.MOUSEBUTTONDOWN:
 				pygame.quit()
 		success = update()
 		if not success and not saved:
