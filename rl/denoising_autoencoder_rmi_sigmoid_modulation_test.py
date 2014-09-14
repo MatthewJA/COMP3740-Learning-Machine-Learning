@@ -3,6 +3,8 @@
 
 """
 Change the modulation with sigmoid over epochs in a RMI denoising autoencoder.
+
+Principal Author: Matthew Alger
 """
 
 import numpy

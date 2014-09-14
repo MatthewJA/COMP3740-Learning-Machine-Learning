@@ -1,5 +1,10 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 Compare denoising autoencoder with RMI denoising autoencoder.
+
+Principal Author: Matthew Alger
 """
 
 from denoising_autoencoder_rmi import RMI_DA
