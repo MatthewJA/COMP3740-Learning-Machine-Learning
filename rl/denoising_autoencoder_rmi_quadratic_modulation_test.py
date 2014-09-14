@@ -1,5 +1,8 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
-Compare denoising autoencoder with RMI denoising autoencoder.
+Change the modulation quadratically over epochs in a RMI denoising autoencoder.
 """
 
 from denoising_autoencoder_rmi import RMI_DA
@@ -25,10 +28,10 @@ validation_out = mnist.load_training_labels(
 corruption = 0.3
 learning_rate = 0.1
 hiddens = 500
-modulation = 0.2
 
-epochs = 20
+epochs = 15
 minibatch_size = 20
+change_modulation = lambda e: e**2/epochs**2 # Quadratically increase from 0 to 1.
 
 da = DA(
 	784,
@@ -47,7 +50,7 @@ rmi_da = RMI_DA(
 	out,
 	learning_rate=learning_rate,
 	corruption=corruption,
-	modulation=modulation)
+	modulation=change_modulation)
 
 plot.plot_over_iterators(
 	[(da.validate_model(validation_inp, validation_out)

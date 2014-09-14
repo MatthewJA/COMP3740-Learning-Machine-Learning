@@ -15,7 +15,7 @@ from random import randrange
 import pygame
 import pygame.locals
 
-def plot_over_iterators(iterators, labels=(), scale=1):
+def plot_over_iterators(iterators, labels=(), scale=1, fullscreen=False):
 	"""
 	Plots values as yielded by iterators.
 
@@ -24,13 +24,16 @@ def plot_over_iterators(iterators, labels=(), scale=1):
 	scale: y-scale factor.
 	"""
 
+	if fullscreen:
+		fullscreen = pygame.FULLSCREEN
+
 	pygame.init()
 
 	info = pygame.display.Info()
 	width = info.current_w
 	height = info.current_h
 
-	screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
+	screen = pygame.display.set_mode((width, height), fullscreen)
 	font = pygame.font.SysFont("sans-serif", 30)
 
 	points = [[] for i in xrange(len(iterators))]

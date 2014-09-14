@@ -24,14 +24,18 @@ class RMI_DA(Denoising_Autoencoder):
 		"""
 		Same as Denoising_Autoencoder, but with additional keyword arguments:
 
-		modulation: Percentage weighting to give labels.
-		change_modulation: Function taking modulation and returning new
-			modulation.
+		modulation: Percentage weighting to give labels, or a function
+			that takes the current epoch and returns the weighting.
 		"""
 
-		self.modulation = kwargs.pop("modulation", 0)
-		self.change_modulation = kwargs.pop("change_modulation",
-			lambda z: z)
+		modulation = kwargs.pop("modulation", 0.0)
+		if hasattr(modulation, "__call__"):
+			self.change_modulation = modulation
+			self.modulation = 0.0
+		else:
+			self.change_modulation = lambda e: e
+			self.modulation = modulation
+
 		super(RMI_DA, self).__init__(*args, **kwargs)
 
 	def get_cost(self):
@@ -51,9 +55,9 @@ class RMI_DA(Denoising_Autoencoder):
 		"""
 
 		iterator = super(RMI_DA, self).train_model(*args, **kwargs)
-		for i in iterator:
-			yield i
-			self.modulation = self.change_modulation(self.modulation)
+		for i, j in enumerate(iterator):
+			self.modulation = self.change_modulation(i)
+			yield j
 
 if __name__ == '__main__':
 	test_DA(RMI_DA)

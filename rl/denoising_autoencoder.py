@@ -328,7 +328,7 @@ class Denoising_Autoencoder(object):
 			if not yield_every_iteration:
 				yield (epoch, numpy.mean(costs))
 
-def test_DA(DA):
+def test_DA(DA, epochs=15):
 	import lib.mnist as mnist
 
 	print "loading training images"
@@ -341,7 +341,6 @@ def test_DA(DA):
 
 	corruption = 0.3
 	learning_rate = 0.1
-	epochs = 15
 	hiddens = 500
 
 	da = DA(784, hiddens,

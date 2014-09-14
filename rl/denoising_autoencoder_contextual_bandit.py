@@ -44,4 +44,4 @@ class CB_DA(Denoising_Autoencoder):
 		return reward_difference
 
 if __name__ == '__main__':
-	test_DA(CB_DA)
+	test_DA(CB_DA, 25)
