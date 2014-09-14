@@ -57,4 +57,5 @@ plot.plot_over_iterators(
 		for i in da.train_model(epochs, minibatch_size, False)),
 	 (rmi_da.validate_model(validation_inp, validation_out)
 		for i in rmi_da.train_model(epochs, minibatch_size, False))],
-	("DA", "RMI DA"))
+	("DA", "RMI DA"),
+	scale=10)

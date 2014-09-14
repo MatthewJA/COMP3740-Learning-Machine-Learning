@@ -15,11 +15,13 @@ from random import randrange
 import pygame
 import pygame.locals
 
-def plot_over_iterators(iterators, labels=()):
+def plot_over_iterators(iterators, labels=(), scale=1):
 	"""
 	Plots values as yielded by iterators.
 
 	iterator: A list of iterators which yield percentages.
+	labels: A tuple of names for each iterator.
+	scale: y-scale factor.
 	"""
 
 	pygame.init()
@@ -48,8 +50,8 @@ def plot_over_iterators(iterators, labels=()):
 				g = int
 				for i in xrange(len(iterator)-1):
 					pygame.draw.line(screen, colours[ii],
-						(f(i), g(min(height, iterator[i]*height))),
-						(f(i+1), g(min(height, iterator[i+1]*height))))
+						(f(i), g(min(height, iterator[i]*height*scale))),
+						(f(i+1), g(min(height, iterator[i+1]*height*scale))))
 				z = font.render("{:.02%}".format(float(iterator[-1])), 1, colours[ii])
 				screen.blit(z, (width//2, height-30-40*ii))
 			screen.blit(labels[ii], (10, height-30-40*ii))
@@ -70,6 +72,10 @@ def plot_over_iterators(iterators, labels=()):
 			if e.type == pygame.locals.QUIT:
 				pygame.quit()
 			if e.type == pygame.locals.MOUSEBUTTONDOWN:
+				if not saved:
+					saved = True
+					date = str(time.strftime("%d-%m-%Y--%H:%M:%S"))
+					pygame.image.save(screen, "../plots/" + date + ".png")
 				pygame.quit()
 		success = update()
 		if not success and not saved:
