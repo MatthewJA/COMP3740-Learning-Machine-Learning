@@ -33,7 +33,7 @@ class CB_DA(RMI_DA):
 
 		return reward
 
-	def get_lr_cost(self):
+	def get_cost(self):
 		"""
 		Get the symbolic cost for the weight matrix and bias vectors.
 		"""
