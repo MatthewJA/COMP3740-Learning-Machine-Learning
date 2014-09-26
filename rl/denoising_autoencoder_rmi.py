@@ -15,6 +15,8 @@ import numpy
 import theano
 from theano.tensor.shared_randomstreams import RandomStreams
 
+theano.config.exception_verbosity = "high"
+
 class RMI_DA(object):
 	"""
 	It like learns how to take noisy versions of the input to unnoisy versions
@@ -83,11 +85,20 @@ class RMI_DA(object):
 		self.initialise_theano_functions()
 
 	def initialise_corrupted_input(self):
+		self.symbolic_augmented_input_mask = theano.tensor.dmatrix("m")
+		augmented_input = self.get_augmented_input()
 		self.symbolic_corrupted_input = self.theano_rng.binomial(
-				size=self.symbolic_input.shape,
+				size=augmented_input.shape,
 				n=1,
 				p=1 - self.corruption,
-				dtype=theano.config.floatX) * self.symbolic_input
+				dtype=theano.config.floatX) * augmented_input * self.symbolic_augmented_input_mask
+
+	def initialise_symbolic_output(self):
+		"""
+		Initialises and subsequently stores a symbolic output value.
+		"""
+
+		self.symbolic_output = theano.tensor.dmatrix("y")
 
 	def initialise_theano_rng(self):
 		"""
@@ -102,8 +113,9 @@ class RMI_DA(object):
 		reverse bias vector, label weight matrix, and label bias vector.
 		"""
 
-		low = -numpy.sqrt(6/(self.input_dimension + self.hidden_dimension))
-		high = numpy.sqrt(6/(self.input_dimension + self.hidden_dimension))
+		# Note that self.i_d + self.o_d = dimension of augmented input
+		low = -numpy.sqrt(6/(self.input_dimension + self.output_dimension + self.hidden_dimension))
+		high = numpy.sqrt(6/(self.input_dimension + self.output_dimension + self.hidden_dimension))
 		if self.activation is theano.tensor.nnet.sigmoid:
 			# We know the optimum distribution for tanh and sigmoid, so we
 			# assume that we're using tanh unless we're using sigmoid.
@@ -115,7 +127,7 @@ class RMI_DA(object):
 				self.rng.uniform( # This distribution is apparently optimal for tanh.
 					low=low,
 					high=high,
-					size=(self.input_dimension, self.hidden_dimension)),
+					size=(self.input_dimension + self.output_dimension, self.hidden_dimension)),
 				dtype=theano.config.floatX),
 			name="W",
 			borrow=True)
@@ -127,7 +139,7 @@ class RMI_DA(object):
 			borrow=True)
 
 		self.reverse_bias = theano.shared(
-			value=numpy.zeros((self.input_dimension,),
+			value=numpy.zeros((self.input_dimension + self.output_dimension,),
 				dtype=theano.config.floatX),
 			name="b'",
 			borrow=True)
@@ -174,16 +186,18 @@ class RMI_DA(object):
 
 		return theano.tensor.mean(theano.tensor.neq(
 			self.make_prediction(),
-			self.symbolic_output))
+			theano.tensor.argmax(
+				self.symbolic_output,
+				axis=1)))
 
 	def get_augmented_input(self):
 		"""
 		Get the input augmented with the correct-label output.
 		"""
 
-		return numpy.concatenate(self.symbolic_input, self.symbolic_output)
+		return theano.tensor.concatenate((self.symbolic_input, self.symbolic_output), axis=1)
 
-	# def get_cost(self):
+	def get_cost(self):
 		"""
 		Get the symbolic cost for the weight matrix and bias vectors.
 		"""
@@ -236,26 +250,38 @@ class RMI_DA(object):
 
 		index = theano.tensor.lscalar("i")
 		batch_size = theano.tensor.lscalar("b")
-		validation_images = theano.tensor.matrix("vx")
-		validation_labels = theano.tensor.ivector("vy")
+		augmented_input_mask = theano.tensor.dmatrix("mask")
+		validation_images = theano.tensor.dmatrix("vx")
+		validation_labels = theano.tensor.dmatrix("vy")
 
 		if (self.input_batch is not None and
 			self.output_batch is not None):
-			self.train_model_once = theano.function([index, batch_size],
+			self.train_model_once = theano.function([index, batch_size, augmented_input_mask],
 				outputs=self.get_cost(),
 				updates=self.get_updates(),
 				givens={
 					self.symbolic_input: self.input_batch[index*batch_size:
 						(index+1)*batch_size],
 					self.symbolic_output: self.output_batch[index*batch_size:
-						(index+1)*batch_size]})
+						(index+1)*batch_size],
+					self.symbolic_augmented_input_mask: augmented_input_mask})
 
-			self.validate_model = theano.function(inputs=[validation_images, validation_labels],
+			self._validate_model = theano.function(inputs=[validation_images, validation_labels, augmented_input_mask],
 				outputs=self.error_rate(),
 				givens={
 					self.symbolic_input: validation_images,
-					self.symbolic_output: validation_labels},
+					self.symbolic_output: validation_labels,
+					self.symbolic_augmented_input_mask: augmented_input_mask},
 				allow_input_downcast=True)
+
+	def validate_model(self, validation_images, validation_labels):
+		"""
+		Validate based on validation data and return the error rate.
+		"""
+
+		augmented_input_mask = numpy.ones((validation_images.shape[0], self.input_dimension+self.output_dimension))
+		augmented_input_mask[:,-self.output_dimension:] = 0
+		return self._validate_model(validation_images, validation_labels, augmented_input_mask)
 
 	def get_weight_matrix(self):
 		"""
@@ -289,8 +315,11 @@ class RMI_DA(object):
 		for epoch in xrange(epochs):
 			costs = []
 			self.modulation = self.change_modulation(epoch)
+			print "modulation is now {:.02%}".format(self.modulation)
 			for index in xrange(batch_count):
-				cost = self.train_model_once(index, minibatch_size)
+				augmented_input_mask = numpy.ones((minibatch_size, self.input_dimension+self.output_dimension))
+				augmented_input_mask[:,-self.output_dimension:] = 0
+				cost = self.train_model_once(index, minibatch_size, augmented_input_mask)
 				costs.append(cost)
 				if yield_every_iteration:
 					yield (index, cost)
@@ -299,14 +328,16 @@ class RMI_DA(object):
 				yield (epoch, numpy.mean(costs))
 
 def test_DA(DA, epochs=15):
+	import math
+
 	import lib.mnist as mnist
 
 	print "loading training images"
 	images = mnist.load_training_images(format="theano", validation=False, div=256.0)
-	labels = mnist.load_training_labels(format="theano", validation=False)
+	labels = mnist.load_training_labels(format="theano", matrix=True, validation=False)
 	print "loading test images"
 	validation_images = mnist.load_training_images(format="numpy", validation=True)
-	validation_labels = mnist.load_training_labels(format="numpy", validation=True)
+	validation_labels = mnist.load_training_labels(format="numpy", matrix=True, validation=True)
 	print "instantiating denoising autoencoder"
 
 	corruption = 0.3
@@ -318,13 +349,28 @@ def test_DA(DA, epochs=15):
 		output_batch=labels,
 		output_dimension=10,
 		corruption=corruption,
-		learning_rate=learning_rate)
+		learning_rate=learning_rate,
+		modulation=lambda z: 0.0)
+	rmi_da = DA(784, hiddens,
+		input_batch=images,
+		output_batch=labels,
+		output_dimension=10,
+		corruption=corruption,
+		learning_rate=learning_rate,
+		modulation=lambda z: 1.0/float(epochs+1)**2 * z**2)
 	print "training..."
 
-	for epoch, cost in da.train_model(epochs):
-		print epoch, cost
-		print "wrong {:.02%} of the time".format(
-			float(da.validate_model(validation_images, validation_labels)))
+	# print "wrong {:.02%} of the time".format(
+	# 	float(da.validate_model(validation_images, validation_labels)))
+	# for epoch, cost in da.train_model(epochs):
+	# 	print epoch, cost
+	# 	print "wrong {:.02%} of the time".format(
+	# 		float(da.validate_model(validation_images, validation_labels)))
+	import lib.plot as plot
+	plot.plot_over_iterators((
+		(da.validate_model(validation_images, validation_labels) for i in da.train_model(epochs, yield_every_iteration=False)),
+		(rmi_da.validate_model(validation_images, validation_labels) for i in rmi_da.train_model(epochs, yield_every_iteration=False))
+	), ("zero modulation", "quadratic modulation"), scale=10)
 
 	print "done."
 
@@ -339,4 +385,4 @@ def test_DA(DA, epochs=15):
 		random.randrange(16**10), corruption, learning_rate, epochs, hiddens))
 
 if __name__ == '__main__':
-	test_DA(Denoising_Autoencoder)
+	test_DA(RMI_DA, 30)

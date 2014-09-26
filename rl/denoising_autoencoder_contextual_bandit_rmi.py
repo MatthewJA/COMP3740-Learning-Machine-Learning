@@ -13,7 +13,7 @@ from __future__ import division
 import numpy
 import theano
 
-from denoising_autoencoder import test_DA
+from denoising_autoencoder_rmi import test_DA
 from denoising_autoencoder_rmi import RMI_DA
 
 class CB_DA(RMI_DA):

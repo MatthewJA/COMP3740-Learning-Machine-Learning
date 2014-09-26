@@ -329,6 +329,8 @@ class Denoising_Autoencoder(object):
 				yield (epoch, numpy.mean(costs))
 
 def test_DA(DA, epochs=15):
+	from sys import argv
+
 	import lib.mnist as mnist
 
 	print "loading training images"
@@ -365,8 +367,8 @@ def test_DA(DA, epochs=15):
 		X=da.weights.get_value(borrow=True).T,
 		img_shape=(28, 28), tile_shape=(50, 10),
 		tile_spacing=(1, 1)))
-	image.save('../plots/{:010x}_{}_{}_{}_{}.png'.format(
-		random.randrange(16**10), corruption, learning_rate, epochs, hiddens))
+	image.save('../plots/{:010x}_{}_{}_{}_{}_{}.png'.format(
+		random.randrange(16**10), argv[0].replace("/", "-"), corruption, learning_rate, epochs, hiddens))
 
 if __name__ == '__main__':
-	test_DA(Denoising_Autoencoder)
+	test_DA(Denoising_Autoencoder, 1)

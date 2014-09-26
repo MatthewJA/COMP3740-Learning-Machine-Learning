@@ -26,11 +26,11 @@ import Tkinter
 import numpy
 import theano
 
-def load_training_labels(db_location="../data/mnist/training_labels", format="numpy", validation=False):
+def load_training_labels(db_location="../data/mnist/training_labels", matrix=False, format="numpy", validation=False):
 	"""
 	Return a list of labels in database order.
 
-	Labels are integers.
+	Labels are integers, or a matrix of 1's and 0's if matrix=True.
 	"""
 	with open(db_location, "rb") as f:
 		# Check magic number.
@@ -46,6 +46,11 @@ def load_training_labels(db_location="../data/mnist/training_labels", format="nu
 			labels.append(label)
 
 		nparray = numpy.array(labels)
+		if matrix:
+			mat = numpy.zeros((label_count, 10))
+			mat[numpy.arange(nparray.shape[0]), nparray] = 1
+			nparray = mat
+			print mat[:,:4]
 
 		if validation:
 			nparray = nparray[50000:,]
@@ -54,13 +59,18 @@ def load_training_labels(db_location="../data/mnist/training_labels", format="nu
 
 		if format == "numpy":
 			return nparray
-		elif format == "theano":
+		elif format == "theano" and not matrix:
 			return theano.tensor.cast(
 				theano.shared(
 					numpy.asarray(nparray, dtype=theano.config.floatX),
 					borrow=True
 				),
 				"int32"
+			)
+		elif format == "theano" and matrix:
+			return theano.shared(
+				numpy.asarray(nparray, dtype=theano.config.floatX),
+				borrow=True
 			)
 		else:
 			raise ValueError("Invalid format: {}".format(format))
