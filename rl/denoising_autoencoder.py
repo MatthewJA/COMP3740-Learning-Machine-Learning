@@ -185,7 +185,7 @@ class Denoising_Autoencoder(object):
 		"""
 
 		return theano.tensor.mean(theano.tensor.neq(
-			self.get_predicted_labels(),
+			self.get_symbolic_predicted_labels(),
 			self.symbolic_output))
 
 	def get_cost(self):
@@ -208,21 +208,21 @@ class Denoising_Autoencoder(object):
 		Get the symbolic cost for the logistic regression matrix and bias vector.
 		"""
 
-		labels = self.get_expected_rewards()
+		labels = self.get_symbolic_expected_rewards()
 
 		return -theano.tensor.mean(
 			theano.tensor.log(labels)[
 				theano.tensor.arange(self.symbolic_output.shape[0]),
 				self.symbolic_output])
 
-	def get_predicted_labels(self):
+	def get_symbolic_predicted_labels(self):
 		"""
 		Predict labels of a minibatch.
 		"""
 
-		return theano.tensor.argmax(self.get_expected_rewards(), axis=1)
+		return theano.tensor.argmax(self.get_symbolic_expected_rewards(), axis=1)
 
-	def get_expected_rewards(self):
+	def get_symbolic_expected_rewards(self):
 		"""
 		Get probabilities of the input values being each label.
 		"""
@@ -269,6 +269,7 @@ class Denoising_Autoencoder(object):
 		batch_size = theano.tensor.lscalar("b")
 		validation_images = theano.tensor.matrix("vx")
 		validation_labels = theano.tensor.ivector("vy")
+		input_matrix = theano.tensor.matrix("ix")
 
 		if (self.input_batch is not None and
 			self.output_batch is not None):
@@ -287,6 +288,10 @@ class Denoising_Autoencoder(object):
 					self.symbolic_input: validation_images,
 					self.symbolic_output: validation_labels},
 				allow_input_downcast=True)
+
+			self.get_expected_rewards = theano.function([input_matrix],
+				outputs=self.get_symbolic_expected_rewards(),
+				givens={self.symbolic_input: input_matrix})
 
 	def get_weight_matrix(self):
 		"""

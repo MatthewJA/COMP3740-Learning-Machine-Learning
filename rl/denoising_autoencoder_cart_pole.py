@@ -1,29 +1,29 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
-A denoising autoencoder implementation of the contextual bandit problem.
+Cart-pole problem with a denoising autoencoder.
 
 Principal Author: Matthew Alger
 """
 
 from __future__ import division
 
+import math
+
 import numpy
 import theano
 
 from denoising_autoencoder import Denoising_Autoencoder, test_DA
+import cart_pole
 
-class CB_DA(Denoising_Autoencoder):
+class Cart_Pole_DA(Denoising_Autoencoder):
 	"""
-	Denoising autoencoder implementation of the contextual bandit problem.
+	Denoising autoencoder implementation of the cart-pole problem.
 	"""
 
 	def get_reward(self):
 		"""
 		Get the symbolic reward.
 		"""
-		predictions = self.get_symbolic_predicted_labels()
+		predictions = self.make_prediction()
 		results = self.symbolic_output
 
 		reward = theano.tensor.eq(results, predictions)
@@ -36,12 +36,13 @@ class CB_DA(Denoising_Autoencoder):
 		"""
 
 		reward = self.get_reward()
-		expected_reward = self.get_symbolic_expected_rewards()[
+		expected_reward = self.get_predictions()[
 				theano.tensor.arange(self.symbolic_output.shape[0]),
-				self.get_symbolic_predicted_labels()]
+				self.make_prediction()]
 
 		reward_difference = theano.tensor.mean(abs(reward - expected_reward))
 		return reward_difference
 
 if __name__ == '__main__':
-	test_DA(CB_DA, 25)
+	cart = cart_pole.Cart(0, math.pi/2)
+	cart_pole.get_action(None, cart)

@@ -26,7 +26,7 @@ class CB_DA(RMI_DA):
 		"""
 		Get the symbolic reward.
 		"""
-		predictions = self.make_prediction()
+		predictions = self.get_symbolic_predicted_labels()
 		results = self.symbolic_output
 
 		reward = theano.tensor.eq(results, predictions)
@@ -39,9 +39,9 @@ class CB_DA(RMI_DA):
 		"""
 
 		reward = self.get_reward()
-		expected_reward = self.get_predictions()[
+		expected_reward = self.get_symbolic_expected_rewards()[
 				theano.tensor.arange(self.symbolic_output.shape[0]),
-				self.make_prediction()]
+				self.get_symbolic_predicted_labels()]
 
 		reward_difference = theano.tensor.mean(abs(reward - expected_reward))
 		return reward_difference
