@@ -1,4 +1,6 @@
 import numpy
+import random
+import pylab
 
 # We're on a quadratic slope: y = c x^2
 # Gradient(x) = 2x, so acceleration = -2cgx
@@ -25,9 +27,9 @@ class MountainCar(object):
   def __init__(self):
     self.c = 0.01
     self.g = 9.8
-    self.accelerator = 3
+    self.accelerator = 0.5
     self.boundary = 100
-    self.position = 0
+    self.position = 20
     self.velocity = 0
 
   # returns (position, velocity, completed)
@@ -41,6 +43,22 @@ class MountainCar(object):
 
 m = MountainCar()
 
+positions, velocities = [], []
+velocity = 0
+
 while True:
-  action = input("move?")
-  print(m.step(action))
+  action = 1 if velocity > 0 else -1
+  position, velocity, done = m.step(action)
+  positions.append(position)
+  velocities.append(velocity)
+
+  if done:
+    break
+  else:
+    print position, velocity
+
+print "Good job!"
+
+pylab.plot(positions)
+
+pylab.show()
