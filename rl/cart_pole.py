@@ -215,4 +215,3 @@ def get_states(agent, cart, random_chance=0.1):
 
 if __name__ == '__main__':
 	cart = Cart(pi/2+0.1)
-	animate_cart(cart, lambda z: 1)
