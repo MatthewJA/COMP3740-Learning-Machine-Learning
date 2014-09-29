@@ -86,14 +86,14 @@ class Cart_Pole_DA(Denoising_Autoencoder):
 
 if __name__ == '__main__':
 
-	cart = cart_pole.Cart(math.pi/2+0.1)
+	cart = cart_pole.Cart(0.1)
 
 	input_dimension = len(cart.get_state()) # The length of a state vector
 	hidden_dimension = 429 # Arbitrary, at present
 	output_dimension = 3 # 3 possible actions
 
-	agent = Cart_Pole_DA(input_dimension, hidden_dimension, output_dimension, gamma=0.5)
-	for i in xrange(20):
+	agent = Cart_Pole_DA(input_dimension, hidden_dimension, output_dimension)
+	for i in xrange(200):
 		state_info = cart_pole.get_states(agent, cart)
 		states, actions, rewards = map(numpy.asarray, zip(*state_info))
 		print actions, i+1

@@ -189,7 +189,7 @@ def get_states(agent, cart, random_chance=0.1):
 	[state, action, discounted_future_reward].
 	"""
 
-	cart.reset(True)
+	cart.reset()
 
 	lists = []
 	while not cart.game_over():
