@@ -20,13 +20,10 @@ class Cart(object):
 	or not accelerate at any given step.
 	"""
 
-	def __init__(self, x, p):
-		"""
-		x: x position of cart
-		p: angle of pole in radians (0 to π)
-		"""
-		self.x = x # position in units
+	def __init__(self, p=pi/2):
+		self.x = 0 # position in units
 		self.p = p # pole angle in radians
+		self.init_p = p # position to reset to
 		self.vx = 0 # velocity in units/step
 		self.a = 0 # acceleration in units/step^2
 		self.l = 100 # length of pole in units
@@ -35,13 +32,30 @@ class Cart(object):
 		self.vp = 0 # angular pole velocity in radians/step
 		self.top_vp = pi/2 # maximum angular pole velocity in radians/step
 		self.g = 0.8 # gravitational acceleration in units/step^2
+		self.maxx = 500
+		self.minx = -500
+
+	def reset(self, randomp=False):
+		"""
+		Reset the dynamic properties of the cart.
+		"""
+
+		self.x = 0
+		self.p = self.init_p if not randomp else (
+			random.random()*pi)
+		self.vx = 0
+		self.a = 0
+		self.vp = 0
 
 	def step(self, action):
 		"""
 		Simulate the cart.
 
-		Action is an acceleration. It can be 1, -1, or 0.
+		action gives the acceleration. It can be 0, 1, or 2.
+		1 is subtracted from this to get the acceleration.
 		"""
+
+		action -= 1
 
 		# We need this to estimate inertia.
 		x_pole_position = self.l * cos(self.p)
@@ -49,14 +63,22 @@ class Cart(object):
 		# The cart moves...
 		self.a = action
 		self.vx = min(self.vx + self.a, self.top_speed)
+		old_x = self.x
 		self.x += self.vx
+		if self.x <= self.minx:
+			self.x = self.minx
+			self.vx = -self.vx
+		elif self.x >= self.maxx:
+			self.x = self.maxx
+			self.vx = -self.vx
 
 		# The pole shifts position...
 		# The shift will be related to the cosine of the angle.
 		# A perfectly vertical pole will maintain its x position.
 		# A perfectly horizontal pole will move completely to a new x position.
 		# Mass should dampen the movement because of inertia.
-		new_x = x_pole_position + min(self.vx, self.vx * cos(self.p/2) / self.m)
+		new_x = x_pole_position + min((self.x - old_x),
+			(self.x - old_x) * cos(self.p/2) / self.m)
 		self.p = acos(max(-self.l, min(self.l, (new_x - self.x)))/self.l)
 
 		# The pole falls.
@@ -103,6 +125,13 @@ class Cart(object):
 						rbf_values.append(rbf_value)
 		return rbf_values
 
+	def game_over(self):
+		"""
+		Whether the pole has hit the cart.
+		"""
+
+		return self.p < 1e-15 or self.p > pi-1e-15
+
 def draw(pygame, screen, cart):
 	screen.fill(0x000000)
 	pygame.draw.rect(screen, 0xFFFFFFFF, (
@@ -148,17 +177,42 @@ def get_action(agent, cart):
 	Get an action to take based on the state of the cart.
 	"""
 
-	print "fetching state"
 	state = cart.get_state()
-	print "got it"
-	print "length:", len(state)
-	print state
-	print "converting to array"
 	state = numpy.asarray([state])
-	print state
-	return
 	expected_rewards = agent.get_expected_rewards(state)
+	action = numpy.argmax(expected_rewards)
+	return action
+
+def get_states(agent, cart, random_chance=0.1):
+	"""
+	Run the cart according to the agent, and return tuples of the form
+	[state, action, discounted_future_reward].
+	"""
+
+	cart.reset(True)
+
+	lists = []
+	while not cart.game_over():
+		state = cart.get_state()
+		action = get_action(agent, cart)
+		if random.random() < random_chance:
+			action = random.randrange(3)
+		cart.step(action)
+		reward = 0 # for now
+		lists.append([state, action, reward])
+	if lists:
+		lists[-1][2] = -1 # Falling over gives us -1 reward.
+
+	tuples = []
+	last_reward = 0
+	while lists:
+		state, action, reward = lists.pop()
+		discounted_future_reward = (last_reward * agent.gamma + reward)
+		last_reward = discounted_future_reward
+		tuples.append((state, action, discounted_future_reward+1))
+
+	return tuples
 
 if __name__ == '__main__':
-	cart = Cart(0, pi/2+0.1)
+	cart = Cart(pi/2+0.1)
 	animate_cart(cart, lambda z: 1)

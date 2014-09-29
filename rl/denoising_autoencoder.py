@@ -129,13 +129,13 @@ class Denoising_Autoencoder(object):
 												# matrix is just the transpose.
 
 		self.label_weights = theano.shared(
-			value=numpy.zeros((self.hidden_dimension, self.input_dimension),
+			value=numpy.zeros((self.hidden_dimension, self.output_dimension),
 				dtype=theano.config.floatX),
 			name="lW",
 			borrow=True)
 
 		self.label_bias = theano.shared(
-			value=numpy.zeros((self.input_dimension,),
+			value=numpy.zeros((self.output_dimension,),
 				dtype=theano.config.floatX),
 			name="lb",
 			borrow=True)
@@ -289,9 +289,9 @@ class Denoising_Autoencoder(object):
 					self.symbolic_output: validation_labels},
 				allow_input_downcast=True)
 
-			self.get_expected_rewards = theano.function([input_matrix],
-				outputs=self.get_symbolic_expected_rewards(),
-				givens={self.symbolic_input: input_matrix})
+		self.get_expected_rewards = theano.function([input_matrix],
+			outputs=self.get_symbolic_expected_rewards(),
+			givens={self.symbolic_input: input_matrix})
 
 	def get_weight_matrix(self):
 		"""
