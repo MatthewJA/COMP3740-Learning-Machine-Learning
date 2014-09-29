@@ -185,7 +185,7 @@ class Denoising_Autoencoder(object):
 		"""
 
 		return theano.tensor.mean(theano.tensor.neq(
-			self.make_prediction(),
+			self.get_predicted_labels(),
 			self.symbolic_output))
 
 	def get_cost(self):
@@ -208,23 +208,23 @@ class Denoising_Autoencoder(object):
 		Get the symbolic cost for the logistic regression matrix and bias vector.
 		"""
 
-		labels = self.get_predictions()
+		labels = self.get_expected_rewards()
 
 		return -theano.tensor.mean(
 			theano.tensor.log(labels)[
 				theano.tensor.arange(self.symbolic_output.shape[0]),
 				self.symbolic_output])
 
-	def make_prediction(self):
+	def get_predicted_labels(self):
 		"""
 		Predict labels of a minibatch.
 		"""
 
-		return theano.tensor.argmax(self.get_predictions(), axis=1)
+		return theano.tensor.argmax(self.get_expected_rewards(), axis=1)
 
-	def get_predictions(self):
+	def get_expected_rewards(self):
 		"""
-		Get predictions of what input values we read in.
+		Get probabilities of the input values being each label.
 		"""
 
 		prob_matrix = theano.tensor.nnet.softmax(
