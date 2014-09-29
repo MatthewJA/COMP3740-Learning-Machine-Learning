@@ -1,8 +1,25 @@
+import numpy
 
 # We're on a quadratic slope: y = c x^2
 # Gradient(x) = 2x, so acceleration = -2cgx
 
 # action \in {-1, 0, 1}
+
+
+def get_output_function(variables):
+  def closeness(vector1, vector2):
+    return 0.9 ** ((x-y)**2 for (x,y) in zip(vector1, vector2))
+
+  input_vector = list([x] for x in variables[0][1])
+  for variable_name, variable_range in variables[1:]:
+    input_vector = [x + [y] for x in input_vector for y in variable_range]
+
+  def output_function(self):
+    actual_position = [self.__dict__[name] for (name, _) in variables]
+    return [closeness(actual_position, other_position)
+              for other_position in input_vector]
+
+  return output_function
 
 class MountainCar(object):
   def __init__(self):
@@ -14,16 +31,16 @@ class MountainCar(object):
     self.velocity = 0
 
   # returns (position, velocity, completed)
-  def step(action):
+  def step(self,action):
     self.velocity += action * self.accelerator - 2 * self.g * self.position * self.c
     self.position += self.velocity
-    return self.output_grid()
+    return (self.position, self.velocity, abs(self.position) > 100)
 
-  def output_grid:
-    output = []
-    for position in range(-100, 100, 10):
-      for velocity in range(-10, 10, 2.5):
-        output.append(0.9**((self.position - position)**2 +
-                            (self.velocity - velocity)**2))
+  output = get_output_function([("position", range(-100,100,10)),
+                                ("velocity", range(-10,10,10))])
 
-    return output
+m = MountainCar()
+
+while True:
+  action = input("move?")
+  print(m.step(action))
