@@ -183,7 +183,7 @@ def get_action(agent, cart):
 	action = numpy.argmax(expected_rewards)
 	return action
 
-def get_states(agent, cart, random_chance=0.1):
+def get_states(agent, cart, epsilon=0.1):
 	"""
 	Run the cart according to the agent, and return tuples of the form
 	[state, action, discounted_future_reward].
@@ -195,7 +195,7 @@ def get_states(agent, cart, random_chance=0.1):
 	while not cart.game_over():
 		state = cart.get_state()
 		action = get_action(agent, cart)
-		if random.random() < random_chance:
+		if random.random() < epsilon:
 			action = random.randrange(3)
 		cart.step(action)
 		reward = 0 # for now

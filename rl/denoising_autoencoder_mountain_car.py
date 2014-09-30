@@ -1,16 +1,25 @@
-import cart_pole
-import mdp_da
+from __future__ import division
+
+import math
+
 import numpy
+import theano
+import pylab
+
+from denoising_autoencoder import Denoising_Autoencoder, test_DA
+import cart_pole
+import mountain_car
+import denoising_autoencoder_cart_pole
 
 if __name__ == '__main__':
 
-  cart = cart_pole.Cart(0.1)
+  cart = cart_pole.Cart(math.pi/2+0.1)
 
   input_dimension = len(cart.get_state()) # The length of a state vector
   hidden_dimension = 429 # Arbitrary, at present
   output_dimension = 3 # 3 possible actions
 
-  agent = mdp_da.MDP_DA(input_dimension, hidden_dimension, output_dimension, gamma=0.9)
+  agent = Cart_Pole_DA(input_dimension, hidden_dimension, output_dimension, gamma=0.9)
 
   lengths = []
 
@@ -26,20 +35,9 @@ if __name__ == '__main__':
     print >> sys.stderr, i, len(state_info)
     i += 1
 
+
     agent.train_model_once(states, actions, rewards)
 
     if i%1000 == 0:
       with open("cartDA.pickle", "w") as f:
         cPickle.dump(agent, f)
-
-
-
-  # state = cart.get_state()
-  # state = numpy.asarray([state])
-  # print agent.get_expected_rewards(state)
-
-  def get_action(cart):
-    return cart_pole.get_action(agent, cart)
-
-  cart.reset()
-  cart_pole.animate_cart(cart, get_action)
