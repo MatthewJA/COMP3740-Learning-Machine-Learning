@@ -4,27 +4,12 @@
 import numpy
 import random
 import pylab
+from math import cos, acos, pi, sin, exp, sqrt
 
 # We're on a quadratic slope: y = c x^2
 # Gradient(x) = 2x, so acceleration = -2cgx
 
 # action \in {-1, 0, 1}
-
-
-def get_output_function(variables):
-  def closeness(vector1, vector2):
-    return 0.9 ** ((x-y)**2 for (x,y) in zip(vector1, vector2))
-
-  input_vector = list([x] for x in variables[0][1])
-  for variable_name, variable_range in variables[1:]:
-    input_vector = [x + [y] for x in input_vector for y in variable_range]
-
-  def output_function(self):
-    actual_position = [self.__dict__[name] for (name, _) in variables]
-    return [closeness(actual_position, other_position)
-              for other_position in input_vector]
-
-  return output_function
 
 class MountainCar(object):
   """
@@ -43,8 +28,8 @@ class MountainCar(object):
     self.c = 0.01
     self.g = 9.8
     self.accelerator = 0.5
-    self.boundary = 100
-    self.position = 20
+    self.boundary = 10
+    self.position = 0
     self.velocity = 0
 
   def step(self, action):
@@ -75,16 +60,15 @@ class MountainCar(object):
     # 0, top_vp/2, top_vp.
     # We will have 5^4 in total.
     rbf_values = []
-    for x in (-100, -50, 0, 50, 100):
-      for vx in (-40, -20, 0, 20, 40):
+    for position in (-100, -50, 0, 50, 100):
+      for velocity in (-40, -20, 0, 20, 40):
         sq_dist = (
-          (self.x - x)**2 +
-          (self.vx - vx)**2 +
-          (self.p - p)**2 +
-          (self.vp - vp)**2)
+          (self.position - position)**2 +
+          (self.velocity - velocity)**2)
 
         rbf_value = exp(-sq_dist)
         rbf_values.append(rbf_value)
+
     return rbf_values
 
   def game_over(self):
@@ -92,37 +76,37 @@ class MountainCar(object):
     Whether the pole has hit the cart.
     """
 
-    return abs(self.boundary) > self.boundary
+    return abs(self.position) > self.boundary
 
 def update(cart, action):
   cart.step(action)
 
-def get_action(agent, cart):
+def get_action(agent, car):
   """
-  Get an action to take based on the state of the cart.
+  Get an action to take based on the state of the car.
   """
 
-  state = cart.get_state()
+  state = car.get_state()
   state = numpy.asarray([state])
   expected_rewards = agent.get_expected_rewards(state)
   action = numpy.argmax(expected_rewards)
   return action
 
-def get_states(agent, cart, epsilon=0.1):
+def get_states(agent, car, epsilon=0.1):
   """
-  Run the cart according to the agent, and return tuples of the form
+  Run the car according to the agent, and return tuples of the form
   [state, action, discounted_future_reward].
   """
 
-  cart.reset()
+  car.reset()
 
   lists = []
-  while not cart.game_over():
-    state = cart.get_state()
-    action = get_action(agent, cart)
+  while not car.game_over():
+    state = car.get_state()
+    action = get_action(agent, car)
     if random.random() < epsilon:
       action = random.randrange(3)
-    cart.step(action)
+    car.step(action)
     reward = 0 # for now
     lists.append([state, action, reward])
   if lists:
@@ -134,6 +118,7 @@ def get_states(agent, cart, epsilon=0.1):
     state, action, reward = lists.pop()
     discounted_future_reward = (last_reward * agent.gamma + reward)
     last_reward = discounted_future_reward
-    tuples.append((state, action, discounted_future_reward+1))
+    tuples.append((state, action, discounted_future_reward))
+
 
   return tuples
