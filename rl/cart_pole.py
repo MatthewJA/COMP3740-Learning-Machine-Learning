@@ -31,7 +31,7 @@ class Cart(object):
 		self.top_speed = self.l/5 # maximum velocity in units/step
 		self.vp = 0 # angular pole velocity in radians/step
 		self.top_vp = pi/2 # maximum angular pole velocity in radians/step
-		self.g = 0.8 # gravitational acceleration in units/step^2
+		self.g = 5 # gravitational acceleration in units/step^2
 		self.maxx = 500
 		self.minx = -500
 
@@ -57,9 +57,6 @@ class Cart(object):
 
 		action -= 1
 
-		# We need this to estimate inertia.
-		x_pole_position = self.l * cos(self.p)
-
 		# The cart moves...
 		self.a = action
 		self.vx = min(self.vx + self.a, self.top_speed)
@@ -72,25 +69,21 @@ class Cart(object):
 			self.x = self.maxx
 			self.vx = -self.vx
 
-		# The pole shifts position...
-		# The shift will be related to the cosine of the angle.
-		# A perfectly vertical pole will maintain its x position.
-		# A perfectly horizontal pole will move completely to a new x position.
-		# Mass should dampen the movement because of inertia.
-		new_x = x_pole_position + min((self.x - old_x),
-			(self.x - old_x) * cos(self.p/2) / self.m)
-		self.p = acos(max(-self.l, min(self.l, (new_x - self.x)))/self.l)
+		# ...And the pole moves with it.
+		back_force = -sin(self.p) * self.m * self.a # maybe this should be v not a?
+		forward_force = -cos(self.p) * self.m * self.g
+		moment_of_inertia = self.m * (self.l/2)**2 / 3
+		torque = forward_force - back_force
+		ap = torque/moment_of_inertia
+		self.vp += ap
+		self.p += self.vp
 
-		# The pole falls.
-		# Calculate torque on the pole.
-		gravitational_force = self.m * self.g
-		perpendicular_force = -gravitational_force * cos(self.p)
-		torque = perpendicular_force * self.l/2 # Average centre of mass = l/2
-		# Angular acceleration is then given by Newton's 2nd Law.
-		moment_of_inertia = self.m * self.l**2/3 # Moment of inertia of pole
-		angular_acceleration = torque/moment_of_inertia
-		self.vp += angular_acceleration
-		self.p = max(0, min(pi, self.p + self.vp))
+		if self.p <= 0:
+			self.p = 0
+			self.vp = 0
+		elif self.p >= pi:
+			self.p = pi
+			self.vp = 0
 
 	def get_state(self):
 		"""
@@ -153,12 +146,12 @@ class Cart(object):
 
 def draw(pygame, screen, cart):
 	screen.fill(0x000000)
-	pygame.draw.rect(screen, 0xFFFFFFFF, (
+	pygame.draw.rect(screen, 0xFFFFFF, (
 		cart.x - 100 + screen.get_width()/2,
 		screen.get_height() - 200,
 		200,
 		50))
-	pygame.draw.line(screen, 0xFFFFFFFF, (
+	pygame.draw.line(screen, 0xFFFFFF, (
 		cart.x + screen.get_width()/2,
 		screen.get_height() - 200), (
 		cart.x + screen.get_width()/2 + cart.l * cos(cart.p),
@@ -202,7 +195,7 @@ def get_action(agent, cart):
 	action = numpy.argmax(expected_rewards)
 	return action
 
-def get_states(agent, cart, random_chance=0.1):
+def get_states(agent, cart, epsilon=0.1):
 	"""
 	Run the cart according to the agent, and return tuples of the form
 	[state, action, discounted_future_reward].
@@ -214,7 +207,7 @@ def get_states(agent, cart, random_chance=0.1):
 	while not cart.game_over():
 		state = cart.get_state()
 		action = get_action(agent, cart)
-		if random.random() < random_chance:
+		if random.random() < epsilon:
 			action = random.randrange(3)
 		cart.step(action)
 		reward = 0 # for now
@@ -233,4 +226,6 @@ def get_states(agent, cart, random_chance=0.1):
 	return tuples
 
 if __name__ == '__main__':
-	cart = Cart(pi/2+0.1)
+	cart = Cart(pi/2)
+	def get_action(cart): return random.randrange(0, 3)
+	animate_cart(cart, get_action)
