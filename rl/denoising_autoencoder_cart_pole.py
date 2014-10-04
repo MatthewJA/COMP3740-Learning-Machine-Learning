@@ -93,8 +93,7 @@ if __name__ == '__main__':
 	hidden_dimension = 429 # Arbitrary, at present
 	output_dimension = 3 # 3 possible actions
 
-	agent = Cart_Pole_DA(input_dimension, hidden_dimension, output_dimension, gamma=0.9)
-
+	agent = Cart_Pole_DA(input_dimension, hidden_dimension, output_dimension, gamma=0.5)
 	lengths = []
 
 	import cPickle
@@ -102,7 +101,7 @@ if __name__ == '__main__':
 
 	i = 0
 	while True:
-		state_info = cart_pole.get_states(agent, cart)
+		state_info = cart_pole.get_states(agent, cart, 0.01)
 		states, actions, rewards = map(numpy.asarray, zip(*state_info))
 		lengths.append(len(state_info))
 		print len(state_info)
