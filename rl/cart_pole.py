@@ -11,6 +11,7 @@ from __future__ import division
 
 import random
 from math import cos, acos, pi, sin, exp, sqrt
+import sys
 
 import numpy
 
@@ -192,16 +193,17 @@ def get_action(agent, cart):
 	state = cart.get_state()
 	state = numpy.asarray([state])
 	expected_rewards = agent.get_expected_rewards(state)
+	print >> sys.stderr, expected_rewards
 	action = numpy.argmax(expected_rewards)
 	return action
 
-def get_states(agent, cart, epsilon=0.1):
+def get_states(agent, cart, epsilon=0.1, random_reset=False):
 	"""
 	Run the cart according to the agent, and return tuples of the form
 	[state, action, discounted_future_reward].
 	"""
 
-	cart.reset(True)
+	cart.reset(random_reset)
 
 	lists = []
 	while not cart.game_over():

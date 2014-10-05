@@ -1,5 +1,5 @@
 import pylab
-smoothing = 50
+smoothing = 20
 stuff = list(int(x) for x in open("output.dat"))
 print len(stuff)
 pylab.plot([sum(stuff[i:i+smoothing])/len(stuff[i:i+smoothing])

@@ -1,16 +1,19 @@
+import math
+
+import numpy
+
 import cart_pole
 import mdp_da
-import numpy
 
 if __name__ == '__main__':
 
-  cart = cart_pole.Cart(0.1)
+  cart = cart_pole.Cart(math.pi/2 - 0.1)
 
   input_dimension = len(cart.get_state()) # The length of a state vector
-  hidden_dimension = 429 # Arbitrary, at present
+  hidden_dimension = 100 # Arbitrary, at present
   output_dimension = 3 # 3 possible actions
 
-  agent = mdp_da.MDP_DA(input_dimension, hidden_dimension, output_dimension, gamma=0.9)
+  agent = mdp_da.MDP_DA(input_dimension, hidden_dimension, output_dimension, gamma=0.1)
 
   lengths = []
 
@@ -19,7 +22,7 @@ if __name__ == '__main__':
 
   i = 0
   while True:
-    state_info = cart_pole.get_states(agent, cart)
+    state_info = cart_pole.get_states(agent, cart, 0.1, True)
     states, actions, rewards = map(numpy.asarray, zip(*state_info))
     lengths.append(len(state_info))
     print len(state_info)
@@ -34,7 +37,6 @@ if __name__ == '__main__':
 
   # state = cart.get_state()
   # state = numpy.asarray([state])
-  # print agent.get_expected_rewards(state)
 
   def get_action(cart):
     return cart_pole.get_action(agent, cart)

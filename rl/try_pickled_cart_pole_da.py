@@ -1,17 +1,19 @@
-from denoising_autoencoder_cart_pole import Cart_Pole_DA
-import cart_pole
+import math
 import cPickle
+
+from mdp_da import MDP_DA
+import cart_pole
 
 with open("cartDA.pickle") as f:
 	agent = cPickle.load(f)
-	cart = cart_pole.Cart(0.5)
+	cart = cart_pole.Cart(math.pi/2 - 0.1)
 
 	import PIL
 	import lib.dlt_utils as utils
 	import random
 	image = PIL.Image.fromarray(utils.tile_raster_images(
 		X=agent.weights.get_value(borrow=True).T,
-		img_shape=(5, 4), tile_shape=(20, 20),
+		img_shape=(5, 4), tile_shape=(5, 20),
 		tile_spacing=(1, 1)))
 	image.save('../plots/pickled_cart_pole.png')
 
