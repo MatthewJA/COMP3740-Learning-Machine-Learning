@@ -1,10 +1,14 @@
 """
 A maze with states represented by numbers from the MNIST dataset.
+
+Principal Author: Matthew Alger
 """
 
 from __future__ import division
 
 import random
+
+import numpy
 
 import lib.mnist as mnist
 
@@ -33,11 +37,11 @@ class Maze(object):
 
         self.start = None
         self.goal = None
-        for x, i in enumerate(grid):
+        for y, i in enumerate(grid):
             if self.start_digit in i:
-                self.start = (x, i.index(self.start_digit))
+                self.start = (i.index(self.start_digit), y)
             if self.goal_digit in i:
-                self.goal = (x, i.index(self.goal_digit))
+                self.goal = (i.index(self.goal_digit), y)
         if self.start is None:
             raise ValueError("Starting digit not in maze.")
         if self.goal is None:
@@ -66,8 +70,9 @@ class Maze(object):
             self.position = x-1, y
         elif direction == 3 and self.position[1] < self.height-1:
             self.position = x, y+1
-        else:
-            raise ValueError("Direction must be an integer from 0 to 1.")
+        elif direction not in {0, 1, 2, 3}:
+            raise ValueError("Direction must be an integer from 0 to 3 "
+                "inclusive. Received: {}".format(direction))
 
     def load_mnist_data(self):
         """
@@ -87,8 +92,82 @@ class Maze(object):
         Returns an image from the MNIST dataset representing where we are.
         """
 
+        x, y = self.position
+        digit = self.grid[y][x]
         
+        return random.choice(self.mnist[digit])
 
-if __name__ == '__main__':
-    maze = Maze([[1, 2, 3], [4, 5, 6]], 1, 6)
-    maze.load_mnist_data()
+    def reset(self):
+        """
+        Reset the maze.
+        """
+
+        self.position = self.start
+
+    def get_reward(self):
+        """
+        Get the reward for being where we are.
+        """
+
+        if self.finished():
+            return 1
+        return 0
+
+    def finished(self):
+        """
+        Return whether or not we have finished navigating the maze.
+        """
+
+        return self.position == self.goal
+
+def get_action(agent, maze):
+    """
+    Get an action to take based on the state of the maze.
+
+    agent: An object with a get_expected_rewards method, that takes a state
+        vector (2d NumPy array with one row) and returns a NumPy array of
+        expected rewards.
+    """
+
+    state = numpy.asarray([maze.get_state()])
+    expected_rewards = agent.get_expected_rewards(state)
+    action = numpy.argmax(expected_rewards)
+    return action
+
+def get_states(agent, maze, epsilon=0.1):
+    """
+    Move through the maze according to the agent, and return tuples of the form
+    [state, action, discounted_future_reward].
+
+    agent: An object with a get_expected_rewards method as described in
+        get_action, and a gamma property describing how fast discounted future
+        reward falls off.
+    maze: A Maze object.
+    epsilon: Percentage chance of taking a random action instead of performing
+        the action given by the agent. Optional (default 0.1).
+    """
+
+    maze.reset()
+
+    lists = []
+    while not maze.finished():
+        state = maze.get_state()
+        action = get_action(agent, maze)
+        if random.random() < epsilon:
+            action = random.randrange(4)
+        maze.move(action)
+        reward = 0 # Temporarily - we'll update this later to be discounted
+                   # future reward.
+        lists.append([state, action, reward])
+    if lists:
+        lists[-1][2] = 1 # Solving the maze gives us reward of 1.
+
+    tuples = []
+    last_reward = 0
+    while lists:
+        state, action, reward = lists.pop()
+        discounted_future_reward = (last_reward * agent.gamma + reward)
+        last_reward = discounted_future_reward
+        tuples.append((state, action, discounted_future_reward))
+
+    return tuples
