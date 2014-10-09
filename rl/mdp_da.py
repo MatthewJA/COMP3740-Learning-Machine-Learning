@@ -37,13 +37,25 @@ class MDP_DA(Denoising_Autoencoder):
 
 		return self.symbolic_output
 
+	def get_symbolic_expected_actual_rewards(self):
+		"""
+		Get expected rewards (not probabilities!)
+		Note that this works for negative reward values too.
+		"""
+
+		prob_matrix = theano.tensor.nnet.softmax(
+			theano.tensor.dot(self.get_hidden_output(),
+				self.label_weights) + self.label_bias)
+
+		return prob_matrix
+
 	def get_lr_cost(self):
 		"""
 		Get the symbolic cost for the weight matrix and bias vectors.
 		"""
 
 		actual_reward = self.get_reward()
-		expected_reward = self.get_symbolic_expected_rewards()[
+		expected_reward = self.get_symbolic_expected_actual_rewards()[
 			theano.tensor.arange(self.action_vector.shape[0]),
 				self.action_vector]
 

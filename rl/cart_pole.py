@@ -100,42 +100,41 @@ class Cart(object):
 		#	0, top_vp/2, top_vp.
 		# We will have 5^4 in total.
 		rbf_values = []
-		for x in (-400, -200, 0, 200, 400):
-			sq_dist = (self.x - x)**2
-			rbf_value = exp(-sq_dist)
-			rbf_values.append(rbf_value)
-		for vx in (-self.top_speed, -self.top_speed/2, 0,
-			self.top_speed/2, self.top_speed):
-			sq_dist = (self.vx - vx)**2
-			rbf_value = exp(-sq_dist)
-			rbf_values.append(rbf_value)
-		for p in (0, pi/4, pi/2, 3*pi/4, pi):
-			sq_dist = (self.p - p)**2
-			rbf_value = exp(-sq_dist)
-			rbf_values.append(rbf_value)
-		for vp in (-self.top_vp, -self.top_vp/2, 0,
-			self.top_vp/2, self.top_vp):
-			sq_dist = (self.vp - vp)**2
-			rbf_value = exp(-sq_dist)
-			rbf_values.append(rbf_value)
-		# rbf_values = []
 		# for x in (-400, -200, 0, 200, 400):
-		# 	for vx in (-self.top_speed, -self.top_speed/2, 0,
-		# 		self.top_speed/2, self.top_speed):
-		# 		for p in (0, pi/4, pi/2, 3*pi/4, pi):
-		# 			for vp in (-self.top_vp, -self.top_vp/2, 0,
-		# 				self.top_vp/2, self.top_vp):
+		# 	sq_dist = (self.x - x)**2
+		# 	rbf_value = exp(-sq_dist)
+		# 	rbf_values.append(rbf_value)
+		# for vx in (-self.top_speed, -self.top_speed/2, 0,
+		# 	self.top_speed/2, self.top_speed):
+		# 	sq_dist = (self.vx - vx)**2
+		# 	rbf_value = exp(-sq_dist)
+		# 	rbf_values.append(rbf_value)
+		# for p in (0, pi/4, pi/2, 3*pi/4, pi):
+		# 	sq_dist = (self.p - p)**2
+		# 	rbf_value = exp(-sq_dist)
+		# 	rbf_values.append(rbf_value)
+		# for vp in (-self.top_vp, -self.top_vp/2, 0,
+		# 	self.top_vp/2, self.top_vp):
+		# 	sq_dist = (self.vp - vp)**2
+		# 	rbf_value = exp(-sq_dist)
+		# 	rbf_values.append(rbf_value)
+		for x in (-400, -200, 0, 200, 400):
+			for vx in (-self.top_speed, -self.top_speed/2, 0,
+				self.top_speed/2, self.top_speed):
+				for p in (0, pi/4, pi/2, 3*pi/4, pi):
+					for vp in (-self.top_vp, -self.top_vp/2, 0,
+						self.top_vp/2, self.top_vp):
 
-		# 				# We have an RBF here.
-		# 				# How far away are we?
-		# 				sq_dist = (
-		# 					(self.x - x)**2 +
-		# 					(self.vx - vx)**2 +
-		# 					(self.p - p)**2 +
-		# 					(self.vp - vp)**2)
+						# We have an RBF here.
+						# How far away are we?
+						sq_dist = (
+							(self.x - x)**2 +
+							(self.vx - vx)**2 +
+							(self.p - p)**2 +
+							(self.vp - vp)**2)
 
-		# 				rbf_value = exp(-sq_dist)
-		# 				rbf_values.append(rbf_value)
+						rbf_value = exp(-sq_dist)
+						rbf_values.append(rbf_value)
 		return rbf_values
 
 	def game_over(self):
@@ -193,7 +192,7 @@ def get_action(agent, cart):
 	state = cart.get_state()
 	state = numpy.asarray([state])
 	expected_rewards = agent.get_expected_rewards(state)
-	print >> sys.stderr, expected_rewards
+	# print >> sys.stderr, expected_rewards
 	action = numpy.argmax(expected_rewards)
 	return action
 
@@ -223,7 +222,7 @@ def get_states(agent, cart, epsilon=0.1, random_reset=False):
 		state, action, reward = lists.pop()
 		discounted_future_reward = (last_reward * agent.gamma + reward)
 		last_reward = discounted_future_reward
-		tuples.append((state, action, discounted_future_reward+1))
+		tuples.append((state, action, discounted_future_reward))
 
 	return tuples
 

@@ -376,4 +376,4 @@ def test_DA(DA, epochs=15):
 		random.randrange(16**10), argv[0].replace("/", "-"), corruption, learning_rate, epochs, hiddens))
 
 if __name__ == '__main__':
-	test_DA(Denoising_Autoencoder, 1)
+	test_DA(Denoising_Autoencoder, 10)
