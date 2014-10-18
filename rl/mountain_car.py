@@ -13,7 +13,7 @@ from math import cos, acos, pi, sin, exp, sqrt
 
 class MountainCar(object):
   """
-  A cart which moves around and can either accelerate left, accelerate right,
+  A car which moves around and can either accelerate left, accelerate right,
   or not accelerate at any given step.
   """
 
@@ -22,7 +22,7 @@ class MountainCar(object):
 
   def reset(self):
     """
-    Reset the dynamic properties of the cart.
+    Reset the dynamic properties of the car.
     """
 
     self.c = 0.01
@@ -34,7 +34,7 @@ class MountainCar(object):
 
   def step(self, action):
     """
-    Simulate the cart.
+    Simulate the car.
 
     action gives the acceleration. It can be 0, 1, or 2.
     1 is subtracted from this to get the acceleration.
@@ -48,7 +48,7 @@ class MountainCar(object):
 
   def get_state(self):
     """
-    Return a list encoding the state of the cart.
+    Return a list encoding the state of the car.
     """
 
     # We have five RBFs per dimension.
@@ -73,13 +73,13 @@ class MountainCar(object):
 
   def game_over(self):
     """
-    Whether the pole has hit the cart.
+    Whether the pole has hit the car.
     """
 
     return abs(self.position) > self.boundary
 
-def update(cart, action):
-  cart.step(action)
+def update(car, action):
+  car.step(action)
 
 def get_action(agent, car):
   """

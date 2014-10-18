@@ -94,7 +94,7 @@ class Maze(object):
 
         x, y = self.position
         digit = self.grid[y][x]
-        
+
         return random.choice(self.mnist[digit])
 
     def reset(self):
@@ -171,3 +171,33 @@ def get_states(agent, maze, epsilon=0.1):
         tuples.append((state, action, discounted_future_reward))
 
     return tuples
+
+# def get_states_q_learning(agent, maze, epsilon=0.1):
+#     maze.reset()
+
+#     lists = []
+#     while not maze.finished():
+#         state = maze.get_state()
+#         action = get_action(agent, maze)
+#         if random.random() < epsilon:
+#             action = random.randrange(4)
+#         maze.move(action)
+#         reward = 0 # Temporarily - we'll update this later to be estimated
+#                    # future reward
+#         lists.append([state, action, reward])
+#     if lists:
+#         lists[-1][2] = 1 # Solving the maze gives us reward of 1.
+
+#     tuples = []
+#     last_reward = 0
+#     while lists:
+#         state, action, reward = lists.pop()
+#         discounted_future_reward = (last_reward * agent.gamma + reward)
+#         last_reward = discounted_future_reward
+
+#         new_value = agent.expected_reward(state)
+#         max(agent.expected_)
+
+#         tuples.append((state, action, discounted_future_reward))
+
+#     return tuples
