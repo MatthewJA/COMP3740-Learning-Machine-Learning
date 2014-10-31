@@ -239,7 +239,7 @@ class Denoising_Autoencoder(object):
 		"""
 
 		da_cost = self.get_cost()
-		
+
 		weight_gradient = theano.tensor.grad(da_cost, self.weights)
 		bias_gradient = theano.tensor.grad(da_cost, self.bias)
 		reverse_bias_gradient = theano.tensor.grad(da_cost, self.reverse_bias)

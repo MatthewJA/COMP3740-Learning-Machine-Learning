@@ -1,0 +1,6 @@
+denoising autoencoder, full feedback
+epochs = 30
+hiddens = 1000
+learning_rate = 0.050000
+corruption = 0.300000
+epoch, cost, error_rate, time
