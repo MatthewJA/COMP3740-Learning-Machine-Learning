@@ -1,4 +1,4 @@
-Reinforcement-Learning
+COMP3740-Learning-Machine-Learning
 ======================
 
-[Buck](https://github.com/bshlgrs) and I are working on a project in reinforcement learning. This repository is for the associated code.
+[Buck](https://github.com/bshlgrs) and I worked on a project in machine learning. This repository is for the associated code.
